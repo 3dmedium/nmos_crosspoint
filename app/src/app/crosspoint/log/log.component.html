@@ -1,0 +1,18 @@
+<div><table>
+    <ng-container *ngFor="let item of list; let i = index">
+    <tr (click)="details = item" [ngClass]="{'active':(item == details)}"  class="listItem">
+       <td>{{item.severity}}</td> 
+       <td>{{item.time}}</td> 
+       <td>{{item.text}}</td> 
+    </tr>
+    </ng-container>
+</table>
+<div *ngIf="details" (click)="details = null">
+    <ace-editor  
+       [text]="getRaw()" 
+       [mode]="'text'"
+       [readOnly]="true"
+    style="min-height: 400px;"
+       ></ace-editor>
+</div>
+</div>

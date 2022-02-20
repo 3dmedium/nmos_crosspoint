@@ -1,0 +1,866 @@
+$size: 24px;
+$padding: 4px;
+$sizePP: 32px;
+$textLength: 160px;
+$textFieldLength: 232px;    /* 160 +padding + padding + 32 +32  text+expander + info */ 
+
+$border: 1px solid transparent;
+/*$borderShadow:0px 0px 0px 1px $borderColor;*/
+$borderShadow: none;
+
+$darkGrey: #37474f; // Background
+$darkGreyHover: #5b6164; // Background
+$lightGrey: #8e9ca3; // foreground / crosspoints
+$borderColor: #859ca5;
+$darkBorderColor: $darkGrey;
+
+/*
+
+
+
+box-shadow: 0px 1px 0 $borderColor,  -1px -1px 0 $borderColor;
+
+
+*/
+
+/*
+z-index....
+
+background
+blocking expand fields: 1
+right receiverlist: 2
+sticky Blocker top: 3
+top senders: 4
+topBlocker:5
+
+
+*/
+
+
+.container {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 80px;
+  bottom: 0px;
+
+  .stickyBlocker {
+    position: absolute;
+    top: 0px;
+     width: 235px;
+    height: 242px;
+
+    z-index: 6;
+    background-color: $darkGrey;
+    pointer-events: none;
+  }
+}
+.scrollContainer {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  right: 0px;
+  bottom: 0px;
+  overflow: scroll;
+
+
+  
+
+}
+
+
+table.crosspoint {
+  
+  font-size: 16px;
+  color: #ffffff;
+  border-collapse: collapse;
+  margin: 0;
+  padding: 0;
+  border: none;
+  position: relative;
+
+  .mat-icon {
+    font-size: 16px;
+  }
+
+
+  .mat-icon-button {
+    padding: 0;
+    min-width: 0;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    line-height: 24px;
+    border-radius: 50%;
+}
+
+
+
+
+
+  
+
+
+  .cp-object-hidden{
+    .cp-label {
+        color:$lightGrey;
+    }
+      }
+
+  thead {
+    th {
+
+       position: sticky;
+        top: 0px;
+        z-index: 5;
+
+      max-width: $sizePP;
+      min-width: $sizePP;
+      min-height: $textFieldLength;
+      max-height: $textFieldLength;
+
+      font-weight: 400;
+      font-size:14px;
+
+      text-align: center;
+    vertical-align: top;
+
+    background-color: $darkGrey;
+      
+
+      
+
+      .cp-label {
+        display:inline-block;
+        
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        padding:$padding;
+        max-height: $textLength;
+        min-height: $textLength;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position:relative;
+        text-align: left;
+        
+        .cp-buttons {
+          position:absolute;
+          left:0px; bottom:0px;
+          width:$size;
+          padding:0;
+          display:none;
+          background-color:$darkGrey;
+          min-width: $size;
+          max-width: $size;
+          padding:20px $padding;
+          button {
+            margin-top:10px;
+          }
+
+
+
+        }
+        &:hover .cp-buttons {
+          display:block;
+        }
+      }
+      &.cp-sender-child .cp-label {
+        margin-top:$sizePP;
+        text-align: right;
+          direction: rtl;
+      }
+      .cp-expander {
+        width:$size;
+        cursor:pointer;
+        height:$size;
+        padding:$padding;
+        line-height: $sizePP;
+        text-align: center;
+        display:inline-block;
+
+      }
+      .cp-info {
+        width:$sizePP;
+        height:$sizePP;
+        padding:0;
+        position:relative;
+        display:inline-block;
+
+        .cp-info-more {
+          position:absolute;
+          bottom:32px;
+          right:0px;
+          display:none;
+          writing-mode: vertical-rl;
+          text-orientation: mixed;
+          padding:20px $padding 20px $padding;
+              white-space: nowrap;
+              min-width: $size;
+              max-width: $size;
+              line-height: $size;;
+        }
+        .cp-info-icon {
+          width:$size;
+          min-height:$size;
+          max-height:$size;
+          padding:$padding;
+          display: block;
+          line-height: $sizePP;
+          text-align: center;
+        }
+        &:hover .cp-info-more {
+          display:block;
+        }
+      }
+      .cp-info-video {
+        background-color: $flowVideoColor;
+      }
+      .cp-info-audio {
+        background-color: $flowAudioColor;
+      }
+      .cp-info-data {
+        background-color: $flowDataColor;
+      }
+
+      
+
+    }
+
+  }
+  tbody {
+    
+td.connector {
+  position:relative;
+  max-width: $sizePP;
+  max-height: $sizePP;
+
+  
+  
+
+  > div {
+          width: $size;
+          height: $size;
+          min-height: $size;
+          min-width: $size;
+          border:4px solid $lightGrey;
+          margin:auto;
+         
+
+          &.connecting {
+            cursor: pointer;
+          background-color: $successColor;
+        }
+        &.ready {
+          cursor: pointer;
+          background-color: $lightGrey;
+        }
+        &.connected {
+          cursor: pointer;
+          background-color: $infoColor;
+        }
+
+        &.next {
+          cursor: pointer;
+          background-color: $errorColor;
+        }
+
+        &.error {
+          cursor: pointer;
+          background-color: $warnColor;
+        }
+
+        }
+
+        &.disabled > div {pointer-events:none; background-color:#637179; border-color: #637179;}
+
+&:hover::after {
+    content: "";
+    position: absolute;
+    background-color: #0002;
+    left: 0;
+    top: -100vh;
+    height: calc(2 * 100vh);
+    width: 100%;
+    z-index: 10;
+    pointer-events: none;
+  }
+  &:hover::before {
+    content: "";
+    position: absolute;
+    background-color: #0002;
+    left: -100vw;
+    top: 0;
+    height: 100%;
+    width: calc(2 * 100vw);
+    z-index: 10;
+    pointer-events: none;
+  }
+}
+
+
+    td {
+      &.cp-receiver-child, &.cp-receiver-device {
+
+
+        position: sticky;
+        left: 0px;
+        z-index: 5;
+        background-color: $darkGrey;
+
+            max-width: $textFieldLength;
+            min-width: $textFieldLength;
+            min-height: $sizePP;
+            max-height: $sizePP;
+            font-weight: 400;
+            font-size:14px;
+            text-align: left;
+      }
+
+      .cp-label {
+        display:inline-block;
+        padding:0px $padding;
+        max-width: $textLength;
+        min-width: $textLength;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        position:relative;
+        text-align: left;
+        .cp-buttons {
+          position:absolute;
+          right:0px; top:-4px;
+          height:$size;
+          padding:0;
+          display:none;
+          background-color:$darkGrey;
+          min-height: $size;
+          max-height: $size;
+          padding:$padding 10px;
+          button {
+            margin-left:10px;
+          }
+        }
+        &:hover .cp-buttons {
+            display:block;
+          }
+        }
+
+        &.cp-receiver-child {
+          .cp-label {
+            margin-left:$sizePP;
+            text-align: right;
+            direction: rtl;
+          }
+        }
+      
+      
+
+      .cp-expander {
+        width:$sizePP;
+        cursor:pointer;
+        padding:0;
+        position:relative;
+        text-align: center;
+        display:inline-block;
+
+      }
+      .cp-info {
+        width:$sizePP;
+        height:$sizePP;
+        padding:0;
+        position:relative;
+        display:inline-block;
+        
+
+        .cp-info-more {
+          position:absolute;
+          top:0px;
+          right:$sizePP;
+          display:none;
+          padding: $padding 20px ;
+              white-space: nowrap;
+              min-height: $size;
+              max-height: $size;
+              line-height: $size;;
+        }
+        .cp-info-icon {
+          width:$size;
+          min-height:$size;
+          max-height:$size;
+          padding:$padding;
+          display: inline-block;
+          line-height: $sizePP;
+          text-align: center;
+        }
+        &:hover .cp-info-more {
+          display:block;
+        }
+      }
+      .cp-info-video {
+        background-color: $flowVideoColor;
+      }
+      .cp-info-audio {
+        background-color: $flowAudioColor;
+      }
+      .cp-info-data {
+        background-color: $flowDataColor;
+      }
+
+      
+      
+    }
+
+    
+
+
+
+  }
+
+  theadsdfg {
+    th {
+      position: sticky;
+      font-weight: 400;
+      padding: $padding;
+      width: $size;
+      max-width: $size;
+      min-width: $size;
+      background-color: $darkGrey;
+      z-index: 3;
+
+      &.stickyExpand {
+        position: sticky;
+        top: 0px;
+        z-index: 5;
+        background-color: $darkGrey;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border-top: 1px solid $darkGrey;
+        }
+      }
+
+      &.stickySpacerExpand {
+        position: sticky;
+        left: 0px;
+        z-index: 5;
+        background-color: $darkGrey;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+          border-left: 1px solid $darkGrey;
+          border-right: 1px solid $darkGrey;
+          border-top: 1px solid $darkGrey;
+        }
+      }
+      &.stickySpacerName {
+        position: sticky;
+        left: 34px;
+        z-index: 5;
+        background-color: $darkGrey;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border-top: 1px solid $darkGrey;
+          border-left: 1px solid $darkGrey;
+          border-right: 1px solid $darkGrey;
+        }
+      }
+      &.stickySpacerInfo {
+        position: sticky;
+        left: 221px;
+        z-index: 5;
+        background-color: $darkGrey;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border-top: 1px solid $darkGrey;
+          border-left: 1px solid $darkGrey;
+        }
+      }
+      &.stickySpacerDisconnect {
+        position: sticky;
+        left: 221px;
+        z-index: 5;
+        background-color: $darkGrey;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border-top: 1px solid $darkGrey;
+          border-left: 1px solid $darkGrey;
+        }
+      }
+      &.name {
+        top: 35px;
+
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: 0px;
+          right: -1px;
+          border-left: 1px solid $borderColor;
+          border-right: 1px solid $borderColor;
+        }
+
+        span {
+          overflow: hidden;
+          min-height: $textLength;
+          height: $textLength;
+          max-height: $textLength;
+        }
+      }
+
+      &.expander {
+        position: sticky;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border-left: 1px solid $borderColor;
+          border-right: 1px solid $borderColor;
+          border-top: 1px solid $borderColor;
+        }
+
+        cursor: pointer;
+        height: $size;
+        max-height: $size;
+        min-width: $size;
+        width: $size;
+        max-width: $size;
+        top: 0px;
+      }
+
+      &.info {
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: 0px;
+          right: -1px;
+
+          border-left: 1px solid $borderColor;
+          border-right: 1px solid $borderColor;
+          border-bottom: 1px solid $borderColor;
+        }
+
+        background-color: $darkGrey;
+        font-size: 12px;
+        padding: $padding;
+        top: 228px;
+        span {
+          min-height: 70px;
+          height: 70px;
+          max-height: 70px;
+          overflow: unset;
+          white-space: normal;
+          line-height: 14px;
+          margin-left: -3px;
+        }
+        &.video {
+          background-color: $flowVideoColor;
+        }
+        &.audio {
+          background-color: $flowAudioColor;
+        }
+        &.data {
+          background-color: $flowDataColor;
+        }
+      }
+      span {
+        writing-mode: vertical-rl;
+        text-orientation: mixed;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      &.device {
+        span {
+          text-align: left;
+        }
+      }
+      &.sender {
+        &::before {
+          border-top: 1px solid $borderColor;
+        }
+
+        span {
+          text-align: right;
+          direction: rtl;
+        }
+      }
+    }
+  }
+  tbodyfsdghsdaf {
+    td {
+      &.stickySpacerExpand {
+        position: sticky;
+        left: 0px;
+        z-index: 1;
+        background-color: $darkGrey;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border-left: 1px solid $darkGrey;
+        }
+      }
+      &.expander {
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border-top: 1px solid $borderColor;
+          border-bottom: 1px solid $borderColor;
+          border-left: 1px solid $borderColor;
+        }
+
+        background-color: $darkGrey;
+        z-index: 2;
+        cursor: pointer;
+        height: $size;
+        max-height: $size;
+        overflow: none;
+
+        min-width: $size;
+        width: $size;
+        max-width: $size;
+
+        position: sticky;
+        left: 0px;
+      }
+      &.name {
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: 0px;
+          left: -1px;
+          right: -1px;
+
+          border-top: 1px solid $borderColor;
+          border-bottom: 1px solid $borderColor;
+        }
+        z-index: 2;
+
+        position: sticky;
+        left: 34px;
+        background-color: $darkGrey;
+        height: $size;
+        max-height: $size;
+        min-width: $textLength;
+        width: $textLength;
+        max-width: $textLength;
+
+        span {
+          display: inline-block;
+          width: 100%;
+          text-align: right;
+          white-space: nowrap;
+          overflow: hidden;
+          text-overflow: ellipsis;
+        }
+      }
+      &.info {
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: 0px;
+          left: -1px;
+          right: -1px;
+
+          border-top: 1px solid $borderColor;
+          border-bottom: 1px solid $borderColor;
+          border-right: 1px solid $borderColor;
+        }
+
+        line-height: 14px;
+        z-index: 2;
+        background-color: $darkGrey;
+        position: sticky;
+        left: 222px;
+        font-size: 12px;
+
+        overflow: hidden;
+        max-height: 24px;
+        height: $size;
+        min-height: $size;
+        min-width: 70px;
+        width: 70px;
+        max-width: 70px;
+        &.video {
+          background-color: $flowVideoColor;
+        }
+        &.audio {
+          background-color: $flowAudioColor;
+        }
+        &.data {
+          background-color: $flowDataColor;
+        }
+      }
+
+      &.disconnect {
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px !important;
+          top: -1px !important;
+          left: -1px !important;
+          right: -1px !important;
+
+          border: 1px solid lighten($borderColor,10%) !important;
+        }
+
+        z-index: 2;
+        position: sticky !important;
+        left: 299px;
+
+        
+        max-height: $size;
+        height: $size;
+        min-height: $size;
+        min-width: $size;
+        width: $size;
+        max-width: $size;
+        .ready {
+            background-color:$darkGrey !important;
+        }
+      }
+
+      span {
+        display: block;
+        overflow: hidden;
+        margin-top: -6px;
+        max-height: 25px;
+        margin-bottom: -5px;
+      }
+
+      padding: $padding;
+      /* Beginning of string */
+
+      &.device {
+        span {
+          text-align: left;
+        }
+      }
+      &.receiver {
+        span {
+          direction: rtl;
+          text-align: right;
+        }
+        &::before {
+          border-left: 1px solid $borderColor;
+        }
+      }
+
+      &.disabled {
+        background-color: $darkGrey;
+        padding: 0px;
+        margin: 0px;
+        box-shadow: $borderShadow;
+        border-top: $border;
+        border-left: $border;
+        border-right: $border;
+        border-bottom: $border;
+        position: relative;
+        &::before {
+          content: "";
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border: 1px solid lighten($darkBorderColor,10%);
+        }
+      }
+      &.connector {
+        position: relative;
+        &::before {
+          content: "";
+          pointer-events: none;
+          position: absolute;
+          bottom: -1px;
+          top: -1px;
+          left: -1px;
+          right: -1px;
+
+          border: 1px solid $darkBorderColor;
+        }
+
+        background-color: $lightGrey;
+        padding: 0px;
+        > div {
+          width: $size;
+          height: $size;
+          min-height: $size;
+          min-width: $size;
+          margin:auto;
+        }
+        .connecting {
+          background-color: $successColor;
+        }
+        .ready {
+          cursor: pointer;
+          background-color: $lightGrey;
+        }
+        .connected {
+          cursor: pointer;
+          background-color: $infoColor;
+        }
+
+        .next {
+          cursor: pointer;
+          background-color: $errorColor;
+        }
+
+        .error {
+          background-color: $warnColor;
+        }
+
+        &.disconnect {
+            background-color:$darkGrey;
+        }
+      }
+    }
+  }
+}

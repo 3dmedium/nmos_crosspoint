@@ -1,0 +1,4 @@
+server/node_modules/
+app/.angular/cache/
+server/config/hidden.json
+server/config/aliases.json

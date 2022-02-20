@@ -1,0 +1,8 @@
+table { max-width:500px;}
+
+.listItem {
+    background-color:#ffffff;
+    &.active {
+        background-color:#ffe291;
+    }
+}
