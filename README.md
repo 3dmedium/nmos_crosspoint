@@ -2,6 +2,9 @@
 
 This tool is intended for demonstrating and testing the NMOS Api. As of now there is no intention for production use.
 
+![preview.jpg](preview.jpg)
+
+
 ## Dependencies
 
 This tool needs a working NMOS Registry running in the network. We test against [nmos-cpp](https://github.com/sony/nmos-cpp) in a docker container.
