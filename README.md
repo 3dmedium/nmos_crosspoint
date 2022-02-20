@@ -66,10 +66,7 @@ Will start one Docker Container with an Angular Development Server and a Node Se
 
 Coding was made Quick and Dirty and is keept like this while testing new functions.
 
-## License
 
-Copyright (C) 2021 Johannes Grieb (info@3dmedium.de)
 
-This program is free software: you can redistribute it and/or modify
-it under the terms of the GNU General Public License Version 3 as 
-published by the Free Software Foundation.
+Copyright (C) 2021 Johannes Grieb
+

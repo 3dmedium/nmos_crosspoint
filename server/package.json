@@ -2,7 +2,7 @@
     "name": "nmos-crosspoint-server",
     "version": "0.0.1",
     "author": "Johannes Grieb",
-    "license": "GPLv3",
+    "license": "MIT",
     "description": "",
     "main": "./dist/server.js",
     "scripts": {
