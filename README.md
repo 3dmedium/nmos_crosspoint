@@ -93,7 +93,8 @@ It is possible to run this tool without docker. Still there is need for a NMOS R
 # build the angular app
 cd ./app
 npm install --force         # force is required for ace (json rendering, to be fixed or replaced)
-npm run build                
+npm run build
+cd ..             
 
 # build the server (typescript has to be globally available)
 cd ./server
