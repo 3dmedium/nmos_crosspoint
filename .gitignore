@@ -1,4 +1,8 @@
 server/node_modules/
-app/.angular/cache/
-server/config/hidden.json
-server/config/aliases.json
+server/dist/*
+server/config/*
+server/config_backups/*
+server/state/*
+server/public/*
+server/log/*
+_tempFiles/*
