@@ -1,0 +1,16 @@
+.pretty-json {
+   span {text-wrap: wrap !important}
+    pre {
+        border: 1px solid silver;
+        padding: 10px 20px;
+        }
+     .json-key {
+        color: brown;
+        }
+     .json-value {
+        color: navy;
+        }
+     .json-string {
+        color: olive;
+        }
+}

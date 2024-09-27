@@ -1,0 +1,10 @@
+{
+    "networkDevices":[
+        {
+            "name":"Arista DCS",
+            "type":"aristaDCS7060XX2",
+            "connect":"10.1.0.14",
+            "auth":"admin::password"
+        }
+    ]
+}

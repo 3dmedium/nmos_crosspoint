@@ -1,0 +1,30 @@
+{
+    "staticNmosRegistries":[
+        {"ip":"10.1.0.211","port":80,"priority":10, "domain":""}
+    ],
+    "logFiles":"./log/",
+    "logOutput":true,
+    "server":{
+        "port":80,
+        "address":"0.0.0.0"
+    },
+    "nmos":{
+        "registryVersions": ["v1.3","v1.2"],
+        "connectVersions":["v1.1", "v1.0"]
+    },
+    "mdns":{
+        "listen":"0.0.0.0"
+    },
+    "multicastRanges":{
+        "video":{"primary":"239.120.0.0/16", "secondary":"239.120.0.0/16"},
+        "audio":{"primary":"239.130.0.0/16", "secondary":"239.130.0.0/16"},
+        "other":{"primary":"239.140.0.0/16", "secondary":"239.140.0.0/16"},
+        "jxsv":{"primary":"239.122.0.0/16", "secondary":"239.122.0.0/16"},
+        "videoUhd":{"primary":"239.121.0.0/16", "secondary":"239.121.0.0/16"}
+    },
+    "ptp":{"domain":101,"preferedMasters":[]},
+    "disabledModules":{
+        "mediadevices":["imagineSnp"],
+        "core":["topology"]
+    }
+}

@@ -1,0 +1,703 @@
+$cp-size: 24px;
+$cp-padding: 4px;
+$cp-round: 6px;
+$cp-sizePP: 32px;
+$cp-textLength: 160px;
+$cp-headerSize: 232px;    /* 160 +padding + padding + 32 +32  text+expander + info */ 
+
+$cp-color-grey:#aaaaaa;
+$cp-color-dark-grey:#333333;
+$cp-color-video: theme('colors.green.500');
+$cp-color-audio:theme('colors.amber.500');
+$cp-color-data:theme('colors.blue.500');
+
+$cp-color-green:#46aa14;
+$cp-color-red:#e21e1e;
+$cp-color-warn:#b45a01;
+$cp-color-blue:#006dd2;
+
+
+
+
+$cp-border: 1px solid transparent;
+
+.crosspoint {
+    
+    .cp-container{
+        margin-left:10px;
+        width:100%;
+        height:100%;
+
+        overflow:scroll;
+        
+
+        .cp-vertical-text {
+            writing-mode: vertical-rl;
+            text-orientation: mixed;
+            white-space: nowrap;
+        }
+
+        .cp-header-cross {
+            z-index:10;
+            position: sticky;
+            top:0px;
+            left: 0px;
+            width:$cp-headerSize;
+            height:$cp-headerSize;
+            background-color: theme('colors.base-100');
+            span {
+                
+            }
+        }
+        .cp-limit-container {
+            position:absolute;
+        }
+
+        .cp-header-limit {
+            z-index:8;
+            position: sticky;
+            top:0px;
+            left: 0px;
+            width:100%;
+            height:$cp-headerSize;
+            background-color: theme('colors.base-100');
+            span {
+                
+            }
+        }
+
+        .cp-label {
+            color:theme('colors.neutral-200');
+            font-weight: 500;
+            font-size: 14px;
+            display:inline-block;
+            padding:$cp-padding;
+            max-width: $cp-headerSize;
+            min-width: $cp-headerSize;
+            max-height: $cp-sizePP;
+            min-height: $cp-sizePP;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            text-align: left;
+            cursor:default;
+            padding:4px 36px 4px 36px;
+            margin:0px -32px 0px -32px;
+            position:relative;
+            &.hidden {
+                color:theme('colors.neutral-500');
+            }
+        }
+
+        .cp-label {
+            .cp-edit {
+                display:none;
+                position:absolute;
+                
+                right:40px; top:0px;
+            
+            }
+
+            &:hover {
+                .cp-edit {
+                    display:block
+                }
+            }
+        }
+
+        .cp-button {
+            display:inline-block;
+            width:$cp-size;
+            height:$cp-size;
+            border-radius: $cp-round;
+            background-color:theme('colors.neutral-900');
+            padding:4px;
+            margin:4px;
+            cursor:pointer;
+            svg {
+                color:theme('colors.white');
+            }
+            &.cp-button-disconnect {
+
+                background-color:theme('colors.red.800');
+
+            }
+
+        }
+
+        .cp-type {
+            display:inline-block;
+            position:relative;
+            padding:4px;
+            margin:4px;
+            height: $cp-size;
+            width: $cp-size;
+            border-radius: $cp-padding;
+
+            background-color: theme('colors.neutral-600');
+            &.cp-type-video svg{ color: $cp-color-video; }
+            &.cp-type-audio svg{ color: $cp-color-audio; }
+            &.cp-type-data svg{ color: $cp-color-data; }
+
+            
+            svg {
+                color:theme('colors.neutral-400');
+            }
+
+            &.active {
+
+                &.cp-type-video { background-color: $cp-color-video; }
+                &.cp-type-audio { background-color: $cp-color-audio; }
+                &.cp-type-data { background-color: $cp-color-data; }
+
+                svg {
+                    color:theme('colors.white');
+                }
+            }
+            &.prepareddisconnect {
+                svg {
+                    color:theme('colors.red.700');
+                }
+            }
+            &.workingdisconnect {
+                svg {
+                    color:theme('colors.green.700');
+                }
+            }
+
+            &.previewdisconnect {
+                svg {
+                    color:theme('colors.red.700');
+                }
+            }
+
+        }
+
+        .cp-type {
+            .cp-detail {
+                display:none;
+                position:absolute;
+                height:$cp-size;
+                width:168px;
+                border-radius: $cp-round;
+                right:26px;
+                top:0px;
+                padding:2px;
+                background-color: theme('colors.neutral-800');
+                color:theme('colors.white');
+                font-size:13px;
+                font-weight: 400;
+            }
+
+            &:hover {
+                .cp-detail {
+                    display:block;
+                }
+            }
+        }
+
+        .cp-type-spacer {
+            display:inline-block;
+            position:relative;
+
+            padding:4px;
+            margin:4px;
+            height: $cp-size;
+            width: $cp-size;
+            border-radius: $cp-padding;
+
+        }
+
+
+        .cp-expand {
+            position:relative;
+            z-index:11;
+            color:theme('colors.neutral-100');
+            display:inline-block;
+            padding:4px;
+            margin:4px;
+            width:$cp-size;
+            height:$cp-size;
+            svg {
+                stroke:theme('colors.neutral-100');
+                transform:scale(0.7);
+            }
+        }
+
+        .cp-device {
+            font-size: 0;
+        }
+
+        .cp-flow {
+            font-size: 0;
+        }
+
+        .cp-device {
+            &:hover, &.expanded {
+                .cp-expand {
+                    svg {
+                        transform:scale(0.7) rotate(90deg);
+                    }
+                }
+            }
+        }
+
+        .cp-device.expanded .cp-line-stick {
+            min-height: 36px;
+            max-height: 36px;
+            padding-top:4px;
+            .cp-label {
+            background-color:$cp-color-dark-grey;
+            border-radius: $cp-round $cp-round 0px 0px; 
+        }}
+
+        .cp-flow .cp-line-stick {
+            .cp-label {
+            background-color: $cp-color-dark-grey ;
+        }}
+
+        .cp-flow:has(+ .cp-device) .cp-line-stick {
+            min-height: 36px;
+            max-height: 36px;
+            padding-bottom:4px;
+            .cp-label {
+            border-radius: 0px 0px $cp-round $cp-round;
+            
+        }}
+
+        
+
+
+        .cp-table {
+            border-collapse: collapse;
+            margin: 0;
+            padding: 0;
+            border: none;
+            top:0px; left:0px;
+            thead {
+                tr {
+                    min-height: $cp-headerSize;
+                    max-height: $cp-headerSize;
+                }
+             th {
+                padding:0;
+                position: sticky;
+                top: 0px;
+                z-index: 9;
+
+                text-align: center;
+                vertical-align: top;
+
+                min-height: $cp-headerSize;
+                max-height: $cp-headerSize;
+
+                max-width: $cp-sizePP;
+                min-width: $cp-sizePP;
+                
+                background-color: theme('colors.base-100');
+
+                &:first-child {
+                    max-width: $cp-headerSize;
+                    min-width: $cp-headerSize;
+                }
+
+
+                .cp-label {
+                    writing-mode: vertical-rl;
+                    text-orientation: mixed;
+                    max-height: $cp-headerSize;
+                    min-height: $cp-headerSize;
+                    max-width: $cp-sizePP;
+                    min-width: $cp-sizePP;
+                    padding: 36px 4px 36px 4px;
+                    margin:-32px 0px -32px 0px;
+                }
+
+                .cp-label {
+                    .cp-edit {
+                        
+                        left:0px; 
+                        bottom:40px;
+
+                        right: unset;
+                        top:unset;
+                    
+                    }
+                }
+
+                .cp-type {
+                    .cp-detail {
+                        height:168px;
+                        width:$cp-size;
+
+                        bottom:26px;
+                        left:0px;
+
+                        right: unset;
+                        top:unset;
+
+
+                        writing-mode: vertical-rl;
+                        text-orientation: mixed;
+                        
+                    }
+                }
+
+
+                &.cp-device.expanded {
+                    min-width: 36px;
+                    max-width:36px;
+                    padding-left: 4px;
+                    .cp-label {
+                    background-color:$cp-color-dark-grey;
+                    border-radius: $cp-round 0px 0px $cp-round; 
+                    }
+                }
+            
+            
+                &.cp-flow {
+                    .cp-label {
+                        background-color: $cp-color-dark-grey ;
+                    }
+                }
+            
+                &.cp-flow:has(+ .cp-device) {
+                    min-width: 36px;
+                    max-width:36px;
+                    padding-right: 4px;
+                    .cp-label {
+                        border-radius: 0px $cp-round $cp-round 0px; 
+                    }
+                }
+
+                .cp-expand svg {
+                    transform:scale(0.7) rotate(90deg);
+                }
+                &.cp-flow {
+                    .cp-label {
+                        writing-mode: vertical-lr;
+                    }
+                }
+
+                &.cp-device {
+                    min-height: $cp-headerSize;
+                    max-height: $cp-headerSize;
+                    
+                    &:hover, &.expanded {
+                        .cp-expand {
+                            svg {
+                                transform:scale(0.7) !important;
+                            }
+                        }
+                    }
+                    }
+             }
+
+            }
+
+            tbody {
+                tr {padding:0;}
+                td {
+                    padding:0;
+                    text-align: left;
+                    vertical-align: middle;
+                    min-height: $cp-sizePP;
+                    max-height: $cp-sizePP;
+                    max-width: $cp-sizePP;
+                    min-width: $cp-sizePP;
+                    
+                }
+                tr td.cp-line-stick  {
+                    position: sticky;
+                    left:0px;
+                    z-index:9;
+                    min-height: $cp-sizePP;
+                    max-height: $cp-sizePP;
+                    max-width: $cp-headerSize;
+                    min-width: $cp-headerSize;
+                    background-color: theme('colors.base-100');
+                }
+            }
+        }
+
+        .cp-connect-flow {
+            div {
+                background-color: rgba(150,150,150,0.05);
+            }
+        }
+        .cp-connect-mismatch {
+            div {
+                
+            }
+        }
+
+        .cp-connect-none, .cp-connect-device, .cp-connect-flow, .cp-connect-mismatch {
+            div {
+                width:$cp-sizePP;
+                height:$cp-sizePP;
+                position:relative;
+                z-index:7;
+                &:hover {
+
+                    background-color: rgba(150,150,150,0.2);
+                    
+                    /* TODO cross should be visible above TH but Connect Buttons not */
+                    
+                    &::before {
+                        z-index:20;
+                        position:absolute;
+                        content:"";
+                        height: $cp-sizePP;
+                        width: $cp-sizePP;
+                        box-shadow: 0px 0px 0px 300vh rgba(150,150,150,0.2);
+                        clip-path: inset(0px -100vw 0px -100vw);
+                        pointer-events: none;
+                    
+                    }
+                    
+                
+                    &::after {
+                        z-index:20;
+                        content: "";
+                        position:absolute;
+                        height: $cp-sizePP;
+                        width: $cp-sizePP;
+                        box-shadow: 0px 0px 0px 300vh rgba(150,150,150,0.2);
+                        clip-path: inset(-100vw 0px -100vw 0px);
+                        pointer-events: none;
+                    }
+                }
+
+                span {
+                    top: 4px;
+                    left: 4px;
+                    position: absolute;
+                    border-radius: $cp-round;
+                    display:block;
+                    height:$cp-size;
+                    width:$cp-size;
+                    cursor: pointer;
+                    
+                    &.active {
+                        background-color: $cp-color-blue;
+                    }
+                    
+                    &.prepared {
+                        background-color: $cp-color-red;
+                    }
+                    &.error {
+                        background-color:$cp-color-warn;
+                    }
+
+                    &.preview {
+                        background-color:$cp-color-red;
+                    }
+
+                    &.working {
+                        background-color: $cp-color-green;
+                    }
+
+                    &:hover {
+                        background-color:$cp-color-red;
+                    }
+
+                }
+
+                
+            }
+        }
+
+        .cp-connect-flow {
+
+        }
+        .cp-connect-mismatch {
+
+        }
+
+        .cp-connect-device {
+            span {
+                &.active {
+                    background-color: $cp-color-blue;
+                    top: 8px;
+                    left: 8px;
+                    border-radius: 8px;
+                    height:16px;
+                    width:16px;
+                }
+
+                &:hover {
+                    top: 4px;
+                    left: 4px;
+                    border-radius: $cp-round;
+                    height:$cp-size;
+                    width:$cp-size;
+                }
+
+
+            }
+        }
+
+        
+
+    }
+}
+
+
+
+
+html[data-theme="light"] {
+    .crosspoint {
+        .cp-container{
+            .cp-header-cross {
+                background-color: theme('colors.base-100');
+            }
+            
+            .cp-header-limit {
+                background-color: theme('colors.base-100');
+            }
+    
+            .cp-label {
+                color:theme('colors.neutral-900');
+                &.hidden {
+                    color:theme('colors.neutral-400');
+                }
+            }
+    
+            
+    
+            .cp-button {
+                background-color:theme('colors.neutral-900');
+                svg {
+                    color:theme('colors.white');
+                }
+                &.cp-button-disconnect {
+                    background-color:theme('colors.red.800');
+                }
+    
+            }
+    
+            .cp-type {
+                background-color: theme('colors.neutral-800');
+                &.cp-type-video svg{ color: $cp-color-video; }
+                &.cp-type-audio svg{ color: $cp-color-audio; }
+                &.cp-type-data svg{ color: $cp-color-data; }
+    
+                svg {
+                    color:theme('colors.neutral-400');
+                }
+    
+                &.active {
+                    &.cp-type-video { background-color: $cp-color-video; }
+                    &.cp-type-audio { background-color: $cp-color-audio; }
+                    &.cp-type-data { background-color: $cp-color-data; }
+    
+                    svg {
+                        color:theme('colors.white');
+                    }
+                }
+                &.prepareddisconnect {
+                    svg {
+                        color:theme('colors.red.700');
+                    }
+                }
+                &.workingdisconnect {
+                    svg {
+                        color:theme('colors.green.700');
+                    }
+                }
+    
+                &.previewdisconnect {
+                    svg {
+                        color:theme('colors.red.700');
+                    }
+                }
+    
+            }
+    
+            .cp-type {
+                .cp-detail {
+                    background-color: theme('colors.neutral-800');
+                    color:theme('colors.white');
+                }
+            }
+    
+    
+            .cp-expand {
+                color:theme('colors.neutral-900');
+                svg {
+                    stroke:theme('colors.neutral-900');
+                }
+            }
+    
+            .cp-device.expanded .cp-line-stick {   
+                .cp-label {
+                    background-color:theme('colors.base-300');;
+                }
+            }
+    
+            .cp-flow .cp-line-stick {
+                .cp-label {
+                    background-color: theme('colors.base-300'); ;
+                }
+            }
+    
+    
+            
+    
+    
+            .cp-table {
+                
+                thead {
+                 th {
+
+                    background-color: theme('colors.base-100');
+    
+    
+    
+                    &.cp-device.expanded {
+                        .cp-label {
+                            background-color: theme('colors.base-300');
+                        }
+                    }
+                
+                
+                    &.cp-flow {
+                        .cp-label {
+                            background-color: theme('colors.base-300');
+                        }
+                    }
+                 }
+    
+                }
+    
+                tbody {
+                   
+                    tr td.cp-line-stick  {
+                        background-color: theme('colors.base-100');
+                    }
+                }
+            }
+    
+            .cp-connect-flow {
+                div {
+                    background-color: rgba(150,150,150,0.05);
+                }
+            }
+            
+
+    
+            .cp-connect-device {
+                span {
+                    &.active {
+                        background-color: $cp-color-blue;
+                    }
+    
+                    
+                }
+            }
+    
+            
+    
+        }
+    }
+}

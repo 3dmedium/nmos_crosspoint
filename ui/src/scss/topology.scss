@@ -1,0 +1,78 @@
+$tp-border-color : #222222;
+$tp-device-color : #999999;
+$tp-int-color : #444444;
+
+$tp-round:6px;
+$tp-padding:2px;
+$tp-int-size:30px;
+$tp-int-height:20px;
+$tp-int-qsize:60px;
+$tp-int-splitsize:14px;
+
+.topology-container {
+
+
+
+    .tp-switch-node {
+        display:flex;
+        flex-direction:column;
+        border:1px solid $tp-border-color;
+        background-color:$tp-device-color;
+        border-radius: $tp-round;
+        padding: 0px $tp-round;
+        color:#111111;
+
+        .tp-switch-description {
+            padding: $tp-padding $tp-round;
+            font-size: 14px;
+        }
+
+        .tp-switch-row-top, .tp-switch-row-bottom {
+            padding:0px;
+            display:flex;
+            flex-direction: row;
+
+            .tp-switch-interface {
+                position:relative;
+                text-align: center;
+                color:#eeeeee;
+                margin:0px $tp-padding;
+                overflow:hidden;
+                font-size: 10px;
+                width:$tp-int-size;
+                height:$tp-int-height;
+                background-color:$tp-int-color;
+                .svelte-flow__handle {
+                    opacity: 0;
+                    left:0px;
+                    top:0px;
+                    bottom:0px;
+                    right:0px;
+                    width:unset;
+                    height:unset;
+                    border-radius: 0px;
+                    transform:unset;
+                }
+            }
+
+            .tp-switch-interface-qsfp {
+                width:$tp-int-qsize;
+            }
+
+            .tp-switch-interface-qsfp-split {
+                
+                width:$tp-int-splitsize;
+                margin-left:0px;
+                margin-right:0px;
+                &:nth-of-type(4n+1) {
+                    margin-left:2px;
+                }
+                &:nth-of-type(4n) {
+                    margin-right:2px;
+                }
+            }
+        }
+
+    }
+
+}

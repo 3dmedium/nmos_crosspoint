@@ -1,0 +1,36 @@
+{
+    "user":"admin1",
+    "password":"password",
+    "closeExistingSessions":false,
+    "ignoreHttps":true,
+    "edids":[{
+            "name":"1080p50",
+            "file":"./config/mediadev_matrox/edid/1080p50.bin"
+        },{
+            "name":"2160p50",
+            "file":"./config/mediadev_matrox/edid/2160p50.bin"
+        }],
+    "resolutions":[{
+        "name":"1080p50",
+        "settings":{
+            "height":1080,
+            "width":1920,
+            "refreshRateDen":1,
+            "refreshRateNum":50,
+            "scan":"progressive"
+        }
+    },{
+        "name":"2160p50",
+        "settings":{
+            "height":2160,
+            "width":3840,
+            "refreshRateDen":1,
+            "refreshRateNum":50,
+            "scan":"progressive"
+        }
+    }],
+    "manualDevices":[
+        {"sn":"abc1234", "auth":{"user":"admin1","password":"password"}},
+        {"sn":"abc4567", "auth":{"user":"admin1","password":"password"}}
+    ]
+}

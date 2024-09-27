@@ -1,0 +1,77 @@
+version: '3.6'
+
+services:
+
+  # Create NMOS Registry/Controller container instance
+  nmos-crosspoint:
+    build: 
+      context: './'
+    container_name: nmos-crosspoint_v2
+    hostname: nmos-crosspoint_v2
+    domainname: local
+    ports:
+    - "80:80"
+    volumes:
+    - "./server/config:/nmos-crosspoint/server/config"
+    - "./server/state:/nmos-crosspoint/server/state"
+    networks:
+      oob:
+        ipv4_address: '10.1.0.20'
+      amber:
+        ipv4_address: '10.11.0.20'
+      blue:
+        ipv4_address: '10.12.0.20'
+
+  nmos-crosspoint-dev:
+    profiles: ["dev"]
+    build: 
+      context: './'
+      dockerfile: Dockerfile.dev
+    container_name: nmos-crosspoint-dev
+    hostname: nmos-crosspoint-dev
+    domainname: local
+    ports:
+    - "80:80"
+    - "5137:5137"
+    volumes:
+    - "./server:/nmos-crosspoint/server"
+    - "./ui:/nmos-crosspoint/ui"
+    - "/nmos-crosspoint/server/node_modules"
+    - "/nmos-crosspoint/ui/node_modules"
+    networks:
+      oob:
+        ipv4_address: '10.1.0.18'
+      amber:
+        ipv4_address: '10.11.0.18'
+      blue:
+        ipv4_address: '10.12.0.18'
+        
+
+networks:
+    oob:
+        name: oob
+        # Create external macvlan subnet using host physical interface allowing containers to have their own IP addresses
+        driver: macvlan
+        driver_opts:
+            parent: ens192
+        ipam:
+            config:
+            - subnet: 10.1.0.0/24
+    amber:
+        name: amber
+        # Create external macvlan subnet using host physical interface allowing containers to have their own IP addresses
+        driver: macvlan
+        driver_opts:
+            parent: ens224
+        ipam:
+            config:
+            - subnet: 10.11.0.0/24
+    blue:
+        name: blue
+        # Create external macvlan subnet using host physical interface allowing containers to have their own IP addresses
+        driver: macvlan
+        driver_opts:
+            parent: ens256
+        ipam:
+            config:
+            - subnet: 10.12.0.0/24

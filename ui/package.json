@@ -1,0 +1,44 @@
+{
+  "name": "nmos_crosspoint_ui",
+  "version": "2.0",
+  "author": "Johannes Grieb",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite --host 0.0.0.0",
+    "build": "vite build",
+    "preview": "vite preview",
+    "check": "svelte-check --tsconfig ./tsconfig.json"
+  },
+  "devDependencies": {
+    "@sveltejs/vite-plugin-svelte": "^3.0.1",
+    "@tsconfig/svelte": "^5.0.2",
+    "sass": "^1.70.0",
+    "svelte": "^4.2.8",
+    "svelte-check": "^3.6.2",
+    "svelte-hero-icons": "^5.1.0",
+    "tslib": "^2.6.2",
+    "typescript": "^5.2.2",
+    "vite": "^5.4.7"
+  },
+  "dependencies": {
+    "@fontsource-variable/roboto-mono": "^5.0.18",
+    "@fontsource/roboto": "^5.0.12",
+    "@xyflow/svelte": "^0.0.35",
+    "autoprefixer": "^10.4.17",
+    "daisyui": "^4.6.1",
+    "happy-svelte-scrollbar": "^1.1.0",
+    "heroicons": "^2.1.1",
+    "install": "^0.13.0",
+    "js-sha256": "^0.11.0",
+    "npm": "^10.4.0",
+    "perfect-scrollbar": "^1.5.5",
+    "postcss": "^8.4.33",
+    "rfc6902": "^5.1.1",
+    "rxjs": "^7.8.1",
+    "svelte-json-tree": "^2.2.0",
+    "svelte-routing": "^2.11.0",
+    "svrollbar": "^0.12.0",
+    "tailwindcss": "^3.4.1"
+  }
+}
