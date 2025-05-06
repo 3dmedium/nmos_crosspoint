@@ -19,6 +19,9 @@ import { CrosspointAbstraction } from "./lib/crosspointAbstraction";
 import { Topology } from "./lib/topology";
 import { MediaDevices } from "./lib/mediaDevices";
 import { SyncObject } from "./lib/SyncServer/syncObject";
+import { parseSettings } from "./lib/parseSettings";
+
+
 
 
 const uiConfig = {
@@ -34,9 +37,12 @@ SyncLog.log("info", "Process", "Server Startup.");
 let settings: any = {};
 try {
     let rawFile = fs.readFileSync("./config/settings.json");
-    settings = JSON.parse(rawFile);
+    let tempSettings = JSON.parse(rawFile);
+    settings = parseSettings(tempSettings);
 } catch (e) {
     SyncLog.log("error", "Settings", "Error while reading file: ./config/settings.json", e);
+    SyncLog.log("error", "Settings", "Can not run without Configuration...");
+    process.exit();
 }
 
 if(settings.hasOwnProperty("logOutput")){
@@ -101,8 +107,8 @@ if(users){
 // TODO.... load dynamic....
 const mediaDevices = new MediaDevices(settings);
 
-const crosspoint = new CrosspointAbstraction();
-const nmosConnector = new NmosRegistryConnector();
+const crosspoint = new CrosspointAbstraction(settings);
+const nmosConnector = new NmosRegistryConnector(settings);
 
 
 
@@ -164,10 +170,55 @@ server.addRoute("POST", "changealias","global", (client: WebsocketClient, query:
             .catch((m) => reject(m));
     });
 });
+
+server.addRoute("POST", "enableFlow","global", (client: WebsocketClient, query:string[], postData: any) => {
+    return new Promise((resolve, reject) => {
+        crosspoint
+            .enableFlow(postData.id, false)
+            .then((m) => resolve(m))
+            .catch((m) => reject(m));
+    });
+});
+
+server.addRoute("POST", "disableFlow","global", (client: WebsocketClient, query:string[], postData: any) => {
+    return new Promise((resolve, reject) => {
+        crosspoint
+            .enableFlow(postData.id, true)
+            .then((m) => resolve(m))
+            .catch((m) => reject(m));
+    });
+});
+
+
+server.addRoute("POST", "setMulticast","global", (client: WebsocketClient, query:string[], postData: any) => {
+    return new Promise((resolve, reject) => {
+        crosspoint
+            .setMulticast(postData.id, postData.data)
+            .then((m) => resolve(m))
+            .catch((m) => reject(m));
+    });
+});
+
+
+
+
+
 server.addRoute("POST", "togglehidden","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .toggleHidden(postData.id)
+            .then((m) => resolve(m))
+            .catch((m) => reject(m));
+    });
+});
+
+
+
+// Crosspoint editor
+server.addRoute("POST", "crosspoint","global", (client: WebsocketClient, query:string[], postData: any) => {
+    return new Promise((resolve, reject) => {
+        crosspoint
+            .crosspointApi(postData)
             .then((m) => resolve(m))
             .catch((m) => reject(m));
     });

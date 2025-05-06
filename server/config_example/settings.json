@@ -26,5 +26,8 @@
     "disabledModules":{
         "mediadevices":["imagineSnp"],
         "core":["topology"]
-    }
+    },
+    "reconnectOnSdpChanges":false,
+    "fixSdpBugs":false,
+    "firstDynamicNumber":1000
 }

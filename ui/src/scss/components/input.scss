@@ -1,0 +1,27 @@
+.inline-editor {
+    display:flex;
+    flex-direction: row;
+    padding:2px 4px;
+
+    &.active {
+        border:1px solid theme('colors.info');;
+        border-radius:2px;
+    }
+    .inline-editor-label {
+        flex:0;
+    }
+    .inline-editor-value {
+        flex:2;
+    }
+
+    .inline-editor-input {
+        width:100%;
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+
+        &:focus, &:focus{
+            outline: none;
+        }
+    }
+}

@@ -8,8 +8,8 @@
     "scripts": {
         "build": "tsc",
         "run": "node ./dist/server.js",
-        "devnmos": "tsc-watch --onSuccess \"node --inspect=0.0.0.0:9229 ./dist/server.js -debug -devnmos\" --onFailure \"echo WHOOPS! Server compilation failed\"",
-        "dev": "tsc-watch --onSuccess \"node --inspect=0.0.0.0:9229 ./dist/server.js -debug\" --onFailure \"echo WHOOPS! Server compilation failed\"",
+        "devnmos": "tsc-watch --onSuccess \"node --inspect=0.0.0.0:9230 ./dist/server.js -debug -devnmos\" --onFailure \"echo WHOOPS! Server compilation failed\"",
+        "dev": "tsc-watch --onSuccess \"node --inspect=0.0.0.0:9230 ./dist/server.js -debug\" --onFailure \"echo WHOOPS! Server compilation failed\"",
         "test": "echo \"Error: no test specified\" && exit 1"
     },
     "dependencies": {

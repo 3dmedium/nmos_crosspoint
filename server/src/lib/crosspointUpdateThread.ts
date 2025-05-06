@@ -1,7 +1,8 @@
-import { CrosspointDevice, CrosspointFlow, CrosspointShadowState, CrosspointState } from "./crosspointAbstraction";
+import { CrosspointDevice, CrosspointFlow, CrosspointShadowState, CrosspointState, CrosspointShadowDevice } from "./crosspointAbstraction";
 import { ComplexCompare, ShortenNames } from "./functions";
 
 import { BitrateCalculator } from "./bitrateHelper/BitrateCalculator"
+import { parseSettings } from "./parseSettings";
 
 const crypto = require('crypto');
 const md5 = data => crypto.createHash('md5').update(data).digest("hex")
@@ -22,11 +23,27 @@ class CrosspointUpdateThread{
     crosspointHidden = {};
     nextDeviceNum :number = 1;
 
+    informMulticast = true;
+    storedMulticast:any={};
+
     
     // TODO Config
     nmosUseGroupHints = true;
 
+    settings:any = null;
+
     constructor(){
+
+       
+        try {
+            let rawFile = fs.readFileSync("./config/settings.json");
+            let tempSettings = JSON.parse(rawFile);
+            this.settings = parseSettings(tempSettings);
+        } catch (e) {
+            //SyncLog.log("error", "Settings", "Error while reading file: ./config/settings.json", e);
+        }
+
+
         parentPort.on('message', (message) => {
             let data = JSON.parse(message);
             this.update(data);
@@ -37,7 +54,10 @@ class CrosspointUpdateThread{
             this.crosspointShadow = JSON.parse(rawFile);
         } catch (e) {
             parentPort.postMessage(JSON.stringify({
-                log:{severity:"error", topic:"Crosspoint Settings", text:"Error while reading file: ./config/crosspoint.json", raw:null}
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"Error while reading file: ./state/crosspoint.json", raw:null}
+            }));
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"File will be created on first use.", raw:null}
             }));
         }
 
@@ -46,7 +66,10 @@ class CrosspointUpdateThread{
             this.crosspointAlias = JSON.parse(rawFile);
         } catch (e) {
             parentPort.postMessage(JSON.stringify({
-                log:{severity:"error", topic:"Crosspoint Settings", text:"Error while reading file: ./config/alias.json", raw:null}
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"Error while reading file: ./state/alias.json", raw:null}
+            }));
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"File will be created on first use.", raw:null}
             }));
         }
 
@@ -55,14 +78,42 @@ class CrosspointUpdateThread{
             this.crosspointHidden = JSON.parse(rawFile);
         } catch (e) {
             parentPort.postMessage(JSON.stringify({
-                log:{severity:"error", topic:"Crosspoint Settings", text:"Error while reading file: ./config/hidden.json", raw:null}
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"Error while reading file: ./state/hidden.json", raw:null}
+            }));
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"File will be created on first use.", raw:null}
             }));
         }
+
+
+        try {
+            let rawFile = fs.readFileSync("./state/multicast.json");
+            this.storedMulticast = JSON.parse(rawFile);
+        } catch (e) {
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"Error while reading file: ./state/multicast.json", raw:null}
+            }));
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"warning", topic:"Crosspoint Settings", text:"File will be created on first use.", raw:null}
+            }));
+        }
+
+        this.nextDeviceNum = this.settings.firstDynamicNumber;
 
         for (let d of Object.values(this.crosspointShadow.devices)) {
             if(d.num >= this.nextDeviceNum){
                 this.nextDeviceNum = d.num+1;
             }
+        }
+
+        if(this.settings.autoMulticast){
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"info", topic:"Multicast Config", text:"Starting automatic Multicast configuration.", raw:null}
+            }));
+            setInterval(()=>{
+                // Todo, when disabled, the service should run but not do any changes
+                this.updateMulticast();
+            },30000);
         }
     }
 
@@ -70,6 +121,14 @@ class CrosspointUpdateThread{
     updateRequest = 0;
     updateTimeout:any = null;
     update(data:any){
+
+
+
+        if(data.hasOwnProperty('crosspointChanges')){
+            this.changeCrosspoint(data.crosspointChanges);
+        }
+
+   
 
         if(data.hasOwnProperty('nmosState')){
             this.nmosState = data.nmosState;
@@ -137,7 +196,8 @@ class CrosspointUpdateThread{
             return;
         }
 
-        if(this.updateRequest >0){
+
+        if(this.updateRequest > 0){
             if(this.updateTimeout && this.updateRequest < 10){
                 clearTimeout(this.updateTimeout);
                 setTimeout(()=>{
@@ -152,6 +212,176 @@ class CrosspointUpdateThread{
         
 
         
+    }
+
+
+    changeCrosspoint(change:any){
+        let changed = false;
+        let aliasChanged = false;
+
+        console.log(change)
+
+        if(change.action == "delete"){
+            if(change.flowId == ""){
+
+                try{
+
+                    for(let type of Object.keys(this.crosspointShadow.devices[change.devId].senders)){
+                        for(let sender of Object.keys(this.crosspointShadow.devices[change.devId].senders[type])){
+                            try{
+                                delete this.crosspointAlias[sender];
+                                aliasChanged = true;
+                            }catch(e){ console.log(e)}
+                        }
+                    }
+
+                    for(let type of Object.keys(this.crosspointShadow.devices[change.devId].receivers)){
+                        for(let sender of Object.keys(this.crosspointShadow.devices[change.devId].receivers[type])){
+                            try{
+                                delete this.crosspointAlias[sender];
+                                aliasChanged = true;
+                            }catch(e){ console.log(e)}
+                        }
+                    }
+
+                }catch(e){console.log(e)}
+
+                try{
+                    delete this.crosspointShadow.devices[change.devId];
+                    changed = true;
+                }catch(e){ console.log(e)}
+
+                try{
+                    delete this.crosspointAlias[change.devId];
+                    aliasChanged = true;
+                }catch(e){ console.log(e)}
+
+                
+
+            }else{
+                try{
+                    let dev = this.crosspointShadow.devices[change.devId];
+                    for(let type of Object.keys(dev.senders)){
+                        try{
+                            delete dev.senders[type][change.flowId]
+                            changed = true;
+                        }catch(e){ console.log(e)}
+
+                        try{
+                            delete this.crosspointAlias[change.flowId];
+                            aliasChanged = true;
+                        }catch(e){ console.log(e)}
+                    }
+
+                    for(let type of Object.keys(dev.receivers)){
+                        try{
+                            delete dev.receivers[type][change.flowId]
+                            changed = true;
+                        }catch(e){ console.log(e)}
+
+                        try{
+                            delete this.crosspointAlias[change.flowId];
+                            aliasChanged = true;
+                        }catch(e){ console.log(e)}
+                    }
+
+
+                }catch(e){ console.log(e)}
+            }
+        }
+
+        if(change.action == "edit"){
+            
+        }
+
+        if(change.action == "create"){
+            
+        }
+
+        if(change.action == "movedevice"){
+            let newNum = Number.parseInt(""+change.newNum);
+            let oldNum = this.crosspointShadow.devices[change.devId].num;
+
+            if(oldNum != newNum){
+                if(newNum == -1){
+                    this.crosspointShadow.devices[change.devId].num = -1;
+                    changed = true;
+                }
+                if(newNum > 0){
+
+                    for(let dev of Object.keys(this.crosspointShadow.devices)){
+                        if(this.crosspointShadow.devices[dev].num == newNum){
+                            this.crosspointShadow.devices[dev].num = oldNum;
+                            changed = true;
+                        }
+                    }
+
+                    this.crosspointShadow.devices[change.devId].num = newNum;
+                    changed = true;
+                }
+
+            }
+        }
+
+        if(change.action == "moveflow"){
+            let newNum = Number.parseInt(""+change.newNum);
+            let type = change.type;
+            let flowId = change.flowId;
+            let oldNum = -1;
+            let found = false;
+            let dev:CrosspointShadowDevice = this.crosspointShadow.devices[change.devId];
+
+            let direction :"senders"|"receivers" = "senders";
+            
+            try{
+                oldNum = dev.senders[type][flowId].num;
+                direction = "senders"
+                found = true;
+            }catch(e){ }
+            try{
+                oldNum = dev.receivers[type][flowId].num;
+                direction = "receivers"
+                found = true;
+            }catch(e){ }
+
+            if(found){
+                console.log(dev[direction][type][flowId])
+                if(newNum == -1){
+                    dev[direction][type][flowId].num = -1;
+                    changed = true;
+                }
+                if(newNum > 0){
+                    for(let id of Object.keys(dev[direction][type])){
+                        if(dev[direction][type][id].num == newNum){
+                            dev[direction][type][id].num = oldNum;
+                            changed = true;
+                        }
+                    }
+
+                    dev[direction][type][flowId].num = newNum;
+                    changed = true;
+                }
+            }
+        }
+            
+        
+
+        
+
+
+
+
+        if(changed){
+            this.doUpdate();
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"info", topic:"Crosspoint", text:"Shadow State was modified.", raw:null}
+            }));
+            try{
+                fs.writeFileSync("./state/crosspoint.json", JSON.stringify(this.crosspointShadow));
+            }catch(e){
+                console.error("Error writing to file: ./state/crosspoint.json");
+            }
+        }
     }
 
     doUpdate(){
@@ -277,6 +507,14 @@ class CrosspointUpdateThread{
                             channelNumber:-1
                         }
                         changed = true;
+
+                        if(type=="audio"){
+                            // TODO Audio Mapping
+                            // Get All channels
+                            // Get Channel names
+
+                            
+                        }
 
                     }else{
                         //update
@@ -409,7 +647,7 @@ class CrosspointUpdateThread{
 
         
 
-
+        this.informMulticast = true;
         if(changed){
             parentPort.postMessage(JSON.stringify({
                 log:{severity:"info", topic:"Crosspoint", text:"Shadow State was modified.", raw:null}
@@ -432,6 +670,7 @@ class CrosspointUpdateThread{
             let device: CrosspointDevice = {
                 id:dev.id,
                 num:dev.num,
+                dynamic:true,
                 alias:"",
                 ip:"",
                 senderIds:[],
@@ -469,6 +708,7 @@ class CrosspointUpdateThread{
                             name: send.name,
                             order: send.order,
                             num:send.num,
+                            dynamic:true,
                             type:send.type,
                             alias:send.name,
                             connectedFlow:"",
@@ -530,6 +770,7 @@ class CrosspointUpdateThread{
                             name: recv.name,
                             order: recv.order,
                             num:recv.num,
+                            dynamic:true,
                             type:recv.type,
                             alias:recv.name,
                             connectedFlow:"",
@@ -576,6 +817,9 @@ class CrosspointUpdateThread{
 
                 }
             }
+
+
+
 
             this.crosspointState.devices.push(device);
         }
@@ -824,6 +1068,305 @@ class CrosspointUpdateThread{
           }
         } catch (e) {}
         return 'unknown';
+    }
+
+
+
+    updateMulticast(){
+        let storeChanged = false;
+        try{
+            if(this.informMulticast == false){
+                // Nothing to do....
+                return;
+            }
+
+            this.informMulticast = false;
+
+
+
+
+            let duplicateMulticast:any = {};
+            let activeMulticast:any = {};
+            let activeErrors:any = {};
+
+            let todoList:any[] = []
+
+
+
+            // -------- NMOS
+            for(let senderId in this.nmosState.senderActiveData){
+                let nmosId = "nmos_"+senderId
+                let activeData = this.nmosState.senderActiveData[senderId];
+                let multicast = [];
+
+                // TODO test errors between SDP and Active...
+
+                let workingOnLeg = false;
+
+                activeData.transport_params.forEach((p, index)=>{
+                    multicast.push(p.destination_ip);
+
+                    
+
+
+                    if(p.destination_ip != ""){
+                        if(activeMulticast.hasOwnProperty(p.destination_ip)){
+                            // Duplicate....
+                            if(duplicateMulticast.hasOwnProperty(p.destination_ip)){
+                                duplicateMulticast[p.destination_ip].push(nmosId)
+                            }else{
+                                duplicateMulticast[p.destination_ip] = [nmosId];
+                            }
+                            if(!workingOnLeg){
+                                // One leg at a time
+                                workingOnLeg = true;
+                                todoList.push({index,senderId})
+                            }
+                            
+                        }else{
+                            activeMulticast[p.destination_ip] = nmosId;
+                        }
+                    }
+
+                    
+
+                    if(p.destination_ip == "" && this.nmosState.sneders.hasOwnProperty(senderId) && this.nmosState.flows.hasOwnProperty(this.nmosState.senders[senderId].flow_id) ){
+                        if(!workingOnLeg){
+                            // One leg at a time
+                            workingOnLeg = true;
+                            todoList.push({index,senderId})
+                        }
+                    }
+
+
+                })
+            }
+
+
+            todoList.forEach((t)=>{
+                let senderId = t.senderId;
+                let nmosId = "nmos_"+senderId;
+                let index = t.index;
+
+
+                let give = "";
+                let type = this.nmosState.flows[this.nmosState.senders[senderId].flow_id].format;
+                if(type == "urn:x-nmos:format:video" ){
+                    type = "video"
+                }else if (type == "urn:x-nmos:format:audio"){
+                    type = "audio"
+                }else{
+                    type = "other"
+                }
+
+
+                if(this.storedMulticast.hasOwnProperty(nmosId)){
+                    give = ""
+                    this.storedMulticast[nmosId].forEach((s)=>{
+                        if(s.index == index){
+                            give = s.multicast
+                        }
+                    });
+
+                    if(give != ""){
+
+                        give = this.storedMulticast[nmosId][index]
+                        if(activeMulticast.hasOwnProperty(give)){
+                            // Search new IP
+                            parentPort.postMessage(JSON.stringify({
+                                log:{severity:"warn", topic:"Multicast Config", text:"Given multicast address used by other device.",raw:{activeId:activeMulticast[give], givenId:nmosId, multicast:give}}
+                            }));
+                            
+                            // TODO: find UHD and JXS for different ranges
+                            
+                            while(1){
+                                give = this.getRandomMulticastAddress(index,type);
+                                if(!this.checkStoredMulticast(give)){
+                                    if(!activeMulticast.hasOwnProperty(give)){
+                                        break;
+                                    }
+                                }
+                            }
+                            if(give != ""){
+                                activeMulticast[give] = nmosId;
+
+                                if(this.storedMulticast.hasOwnProperty(nmosId)){
+                                    this.storedMulticast[nmosId].forEach((s)=>{
+                                        if(s.index == index){
+                                            s.multicast = give;
+                                        }
+                                    });
+                                }else{
+                                    this.storedMulticast[nmosId] = [];
+                                    this.storedMulticast[nmosId].push({index:index, multicast:give})
+                                }
+                                storeChanged = true;
+
+                                parentPort.postMessage(JSON.stringify({
+                                    log:{severity:"info", topic:"Multicast Config", text:"Given multicast address to sender:",raw:{givenId:nmosId, multicast:give}}
+                                }));
+                                console.log(give,senderId, this.nmosState.senders[senderId].label);
+                                if(!this.nmosState.senders[senderId].subscription.active)
+                                console.error("inactive")
+                                parentPort.postMessage(JSON.stringify({
+                                    nmosSetMulticast:{nmosId:senderId, multicast:{legs:[{index:index, multicast:give}]}}
+                                }));
+                            }
+                            return;
+
+                        }
+                    }
+                }
+                // if path did not get multicast
+                    
+                while(1){
+                    // TODO protect loop if no more multicast available
+                    give = this.getRandomMulticastAddress(index,type);
+                    if(!this.checkStoredMulticast(give)){
+                        if(!activeMulticast.hasOwnProperty(give)){
+                            break;
+                        }
+                    }
+                }
+                if(give != ""){
+                    activeMulticast[give] = nmosId;
+
+                    if(this.storedMulticast.hasOwnProperty(nmosId)){
+                        this.storedMulticast[nmosId].forEach((s)=>{
+                            if(s.index == index){
+                                s.multicast = give;
+                            }
+                        });
+                    }else{
+                        this.storedMulticast[nmosId] = [];
+                        this.storedMulticast[nmosId].push({index:index, multicast:give})
+                    }
+                    storeChanged = true;
+
+                    parentPort.postMessage(JSON.stringify({
+                        log:{severity:"info", topic:"Multicast Config", text:"Given multicast address to sender:",raw:{givenId:nmosId, multicast:give}}
+                    }));
+                    console.log("Give Multicast:", give,senderId, this.nmosState.senders[senderId].label);
+                    if(!this.nmosState.senders[senderId].subscription.active)
+                    console.error("inactive")
+                    parentPort.postMessage(JSON.stringify({
+                        nmosSetMulticast:{nmosId:senderId, multicast:{legs:[{index:index, multicast:give}]}}
+                    }));
+                }
+
+
+            })
+
+
+            //console.log(activeMulticast)
+            console.log("multicast done")
+
+
+            // ------- END NMOS
+
+
+
+
+        }catch(e){
+            console.error(e)
+        }
+
+        if(storeChanged){
+            try{
+                fs.writeFileSync("./state/multicast.json", JSON.stringify(this.storedMulticast));
+            }catch(e){
+                console.error("Error writing to file: ./state/multicast.json");
+            }
+        }
+
+
+
+
+
+
+
+
+
+    }
+
+    getRandomMulticastAddress(index:number,type:string){
+        let mode = "primary"
+        if(index == 0){
+            mode = "primary"
+        }else if(index = 2){
+            mode = "secondary"
+        }else{
+            return "";
+        }
+        try{
+            let range = this.settings.multicastRanges[type][mode];
+            let ip = range.split("/")[0].split(".");
+            let mask = Number.parseInt(range.split("/")[1]);
+
+            
+            let bin_ip:string[] = [];
+
+            let add = (n, size= 8) => {
+                let num = Number.parseInt(n).toString(2);
+
+
+                for(let i = 0; i<8; i++){
+                    if(i<num.length){
+                        bin_ip.push(num[num.length-i-1])
+                    }else{
+                        bin_ip.push("0");
+                    }
+                }
+
+                while (num.length < size) num = "0" + num;
+                return num;
+            }
+
+            add(ip[3]);
+            add(ip[2]);
+            add(ip[1]);
+            add(ip[0]);
+
+            for(let i = 0;i<mask; i++){
+                bin_ip[i] = (Math.random()>0.5? "1":"0")
+            }
+
+            
+
+            let give = ""
+            for(let i = 0; i<4; i++){
+                let part = "";
+                for(let y = 0; y<8; y++){
+                    part = bin_ip[i*8+y] + part;
+                }
+                if(i!=0){
+                    give = "."+give
+                }
+                give = Number.parseInt(part,2) + give
+            }
+
+
+
+            return give;
+
+
+        }catch(e){
+            console.log(e)
+        }
+
+        return "";
+    }
+
+
+    checkStoredMulticast(ip:string){
+        for(let s in this.storedMulticast){
+            for(let e of this.storedMulticast[s]){
+                if(e.multicast == ip){
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 

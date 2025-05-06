@@ -26,11 +26,12 @@
 
 
     let filter:any = {
-      version:11238,
+      version:11338,
       showUnavailable:false,
       showHidden: false,
       searchReceivers:"",
       searchSenders:"",
+      showAudioChannels:false,
       expanded: { senders :[], receivers :[]}
     };
 
@@ -718,8 +719,10 @@
       ServerConnector.addFeedback(feedback)
     }
 
-    function activate(dev:any, flow:any){
-      // TODO
+    function activate(dev:any, flow:any, active:boolean){
+      ServerConnector.post((active?"disableFlow":"enableFlow"), {
+        id:flow.id,
+      }).finally(()=>{})
     }
 
     function toggleHidden(id:string){
@@ -803,6 +806,13 @@
           <input on:input={()=>changeFilter()} bind:checked={filter.showHidden} type="checkbox" class="toggle" />
         </label>
       </li>
+
+      <li>
+        <label class="label cursor-pointer gap-2">
+          <span class="label-text">Show Audio Channels</span> 
+          <input on:input={()=>changeFilter()} bind:checked={filter.showAudioChannels} type="checkbox" class="toggle" />
+        </label>
+      </li>
     </ul>
 
 
@@ -835,7 +845,7 @@
                                 --><span class="cp-edit">
                                   <span on:click={()=>editFlowLabel(flow)} class="cp-button cp-button-edit" use:OverlayMenuService.tooltip data-tooltip="change alias"><Icon src={Pencil}></Icon></span>
                                   <span on:click={()=>toggleHidden(flow.id)} class="cp-button cp-button-visible" use:OverlayMenuService.tooltip data-tooltip="toggle hidden"><Icon src={(flow.hidden ? Eye : EyeSlash)}></Icon></span>
-                                  <span on:click={()=>activate(dev,flow)} class="cp-button cp-button-disconnect" use:OverlayMenuService.tooltip data-tooltip="toggle activate"><Icon src={Link}></Icon></span>
+                                  <span on:click={()=>activate(dev,flow, flow.active)} class="cp-button cp-button-disconnect" use:OverlayMenuService.tooltip data-tooltip="toggle activate"><Icon src={Link}></Icon></span>
                                 </span><!--
                                 --></span><!--
                               --><span class={"cp-type cp-type-"+flow.type + " " + (flow.active ? "active" : "") }><Icon src={getFlowTypeIcon(flow.type)}></Icon><!--
@@ -870,12 +880,14 @@
                                   on:mouseleave={()=>clearDeviceConnectionPreview()} ></span></div></td>
                       {#if isSenderExpanded(sourceDev.id)}
                         {#each flowTypes as type}
-                          {#each sourceDev.senders[type] as sourceFlow}
-                          <td class="cp-connect-device"><div><span 
-                                  on:click={()=>connect( sourceDev, sourceFlow, dev, null)}
-                                  on:mouseover={()=>getDeviceConnectionPreview(sourceDev, sourceFlow, dev, null)}
-                                  on:mouseleave={()=>clearDeviceConnectionPreview()}></span></div></td>
-                          {/each}
+                          {#if !(filter.showAudioChannels && type == "audio") && !(!filter.showAudioChannels && type == "audiochannel") }
+                            {#each sourceDev.senders[type] as sourceFlow}
+                              <td class="cp-connect-device"><div><span 
+                                    on:click={()=>connect( sourceDev, sourceFlow, dev, null)}
+                                    on:mouseover={()=>getDeviceConnectionPreview(sourceDev, sourceFlow, dev, null)}
+                                    on:mouseleave={()=>clearDeviceConnectionPreview()}></span></div></td>
+                            {/each}
+                          {/if}
                         {/each}
                       {/if}
                     {/each}
@@ -910,14 +922,16 @@
                               on:mouseleave={()=>clearDeviceConnectionPreview()} ></span></div></td>
                       {#if isSenderExpanded(sourceDev.id)}
                         {#each flowTypes as type}
-                          {#each sourceDev.senders[type] as sourceFlow}
-                            {#if receiverCapable(flow, sourceFlow) }
-                            <td class="cp-connect-flow"><div><span class="{ getConnectClass(sourceDev, sourceFlow, dev, flow)}" 
-                              on:click={()=>connect( sourceDev, sourceFlow, dev, flow) }></span></div></td>
-                            {:else}
-                            <td class="cp-connect-mismatch"><div></div></td>
-                            {/if}
-                          {/each}
+                          {#if !(filter.showAudioChannels && type == "audio") && !(!filter.showAudioChannels && type == "audiochannel") }
+                            {#each sourceDev.senders[type] as sourceFlow}
+                              {#if receiverCapable(flow, sourceFlow) }
+                              <td class="cp-connect-flow"><div><span class="{ getConnectClass(sourceDev, sourceFlow, dev, flow)}" 
+                                on:click={()=>connect( sourceDev, sourceFlow, dev, flow) }></span></div></td>
+                              {:else}
+                              <td class="cp-connect-mismatch"><div></div></td>
+                              {/if}
+                            {/each}
+                          {/if}
                         {/each}
                       {/if}
                     {/each}

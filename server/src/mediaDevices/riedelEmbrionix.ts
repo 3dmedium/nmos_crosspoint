@@ -64,6 +64,18 @@ export default class MediaDevRiedelEmbrionix {
     
     constructor(settings:any){
         this.quickState = new BehaviorSubject<any>(this.quickStateInternal);
+
+
+        try{
+            if (!fs.existsSync("./state/mediadev_riedelembrionix")) {
+                fs.mkdirSync("./state/mediadev_riedelembrionix");
+                console.log("Folder created: ./state/mediadev_riedelembrionix");
+            }
+        }catch(e){
+            console.error("Error while creating Folder: ./state/mediadev_riedelembrionix");
+        }
+
+
         
         if(MediaDevRiedelEmbrionix.instance == null){
             MediaDevRiedelEmbrionix.instance = this;

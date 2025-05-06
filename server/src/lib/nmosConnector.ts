@@ -64,19 +64,16 @@ export class NmosRegistryConnector {
         "sendersManifestDetail":[]
     }
 
-    constructor(loaddev = false) {
+    settings:any = {};
+
+    constructor(config:any, loaddev = false) {
+        this.settings = config;
         NmosRegistryConnector.instance = this;
         this.syncNmos = new SyncObject("nmos", this.nmosState);
         this.syncConnectionState = new SyncObject("nmosConnectionState");
 
-        let settings: any = { staticNmosRegistries: [] };
-        try {
-            let rawFile = fs.readFileSync("./config/settings.json");
-            settings = JSON.parse(rawFile);
-        } catch (e) {}
-
-        this.registryVersionList = settings.nmos.registryVersions;
-        this.connectVersionList = settings.nmos.connectVersions
+        this.registryVersionList = this.settings.nmos.registryVersions;
+        this.connectVersionList = this.settings.nmos.connectVersions
 
         // TODO dev cleanup
         //if(loaddev){
@@ -105,7 +102,7 @@ export class NmosRegistryConnector {
         // ----- dev cleanup
 
         
-        settings.staticNmosRegistries.forEach((staticRegistry) => {
+        this.settings.staticNmosRegistries.forEach((staticRegistry) => {
             try {
                 let registry: NmosRegistry = {
                     ip: staticRegistry.ip,
@@ -207,6 +204,7 @@ export class NmosRegistryConnector {
     private mdnsBrowser: any = null;
     private registryVersionList = ["v1.3","v1.2"];
     private connectVersionList = ["v1.1", "v1.0"];
+    private channelmappingVersionList = ["v1.0"];
     private nmosRegistryList: NmosRegistry[] = [];
 
 
@@ -241,6 +239,8 @@ export class NmosRegistryConnector {
         receivers: {},
         flows: {},
         nodes: {},
+        senderActiveData:{},
+        channelmapping:{},
         sendersManifestDetail :{}
     };
     private connections = {};
@@ -376,6 +376,11 @@ export class NmosRegistryConnector {
                                     }
                                     
                                 }
+
+                                if(changes && type == "devices"){
+                                    this.loadChannelMaping(postData);
+                                }
+
                                 this.nmosState[type][g.path] = postData;
                                 
                             }
@@ -418,12 +423,20 @@ export class NmosRegistryConnector {
         
                 message.grain.data.forEach((g: any) => {
 
-                    console.log( "---- GRAIN: "+type+ "    -----   "+g.post?.label)
 
                     if (type == "senders" || type == "flows") {
                         setTimeout(()=>{
                             this.getSenderManifestData(type, g);
-                        },200)
+                        },200);
+                        setTimeout(()=>{
+                            this.getSenderManifestData(type, g);
+                        },5000);
+                    }
+
+                    if(type == "senders"){
+                        setTimeout(()=>{
+                            this.getSenderActive(type, g);
+                        },100);
                     }
                 });
 
@@ -431,6 +444,52 @@ export class NmosRegistryConnector {
         
 
     }
+
+    async loadChannelMaping(postData:any){
+        let cmLoaded = false;
+        for(let c of postData.controls){
+            // TODO: other versions
+            if(c.type=="urn:x-nmos:control:cm-ctrl/v1.0"){
+                try{
+                    let io = await axios.get(c.href + "/io");
+                    let map = await axios.get(c.href + "/map/active");
+
+                    for(let k in io.data.outputs){
+
+                        let data = io.data.outputs[k];
+                        if(data.source_id == null){
+                            data["receivers"] = [];
+
+                            
+                            for(let inId of io.data.outputs[k].caps.routable_inputs){
+                                try{
+                                    if(io.data.inputs[inId].parent.type = "receiver"){
+                                        data["receivers"].push(io.data.inputs[inId].parent.id)
+                                    }
+                                }catch(e){}
+                            }
+                            
+                            if(data.receivers.length > 0){
+                                this.nmosState.channelmapping[k] = data;
+                            }
+                        }
+                    }
+
+                
+                    cmLoaded = true;
+                    
+
+                }catch(e){
+                    //console.log(e);
+                }
+            }
+        }
+
+        this.syncNmos.setState(this.nmosState);
+        this.updateCrosspoint();
+
+    }
+
 
 
     getSenderManifestData(type:string, g:any){
@@ -466,8 +525,9 @@ export class NmosRegistryConnector {
                         
                     }catch(e){}
 
+                    
                     if (manifest_href && active && senderId) {
-                        console.log("----- load manifest for "+label)
+                        //console.log("----- load manifest for "+label)
                         axios.get(g.post.manifest_href).then(response => {
                             if(response.data.length > 10){
                                 // TODO Check for BAD SDP Files, is this already enough, more than 10 chars and more than 0 flows
@@ -481,8 +541,14 @@ export class NmosRegistryConnector {
                                         this.syncNmos.setState(this.nmosState);
                                     }catch(e){}
                                 }else{
+                                    if(this.nmosState["sendersManifestDetail"][senderId] && this.nmosState["sendersManifestDetail"][senderId]._RAWSDP && this.nmosState["sendersManifestDetail"][senderId]._RAWSDP.length > 10 ){
+                                        if(this.nmosState["sendersManifestDetail"][senderId]._RAWSDP != sdp["_RAWSDP"]){
+                                            this.reconnectOnChanges(senderId);
+                                        }
+                                    }
                                     this.nmosState["sendersManifestDetail"][senderId] = sdp;
                                     this.syncNmos.setState(this.nmosState);
+                                    this.updateCrosspoint();
                                 }
                             }else{
                                 SyncLog.log("warn", "NMOS", "Got BAD SDP File for Flow: " + label + " ( ID: " + senderId +" )")    
@@ -502,6 +568,70 @@ export class NmosRegistryConnector {
                     try {
                         delete this.nmosState["sendersManifestDetail"][g.path];
                         this.syncNmos.setState(this.nmosState);
+                        this.updateCrosspoint();
+                    } catch (e) {}
+                    
+                }
+            }
+        }
+    }
+
+
+    async getSenderActive(type:string, g:any){
+        if (g.hasOwnProperty("path") && typeof g.path == "string") {
+            if (g.hasOwnProperty("post")) {
+                // add or update element
+                if (typeof g.post == "object") {
+
+                    let active_href = [];
+                    let senderId = "";
+                    let sender = null;
+                    let device = null;
+
+
+                    try{
+                        senderId = g.path;
+                        sender = g.post;
+                        device = this.nmosState.devices[sender.device_id];
+
+                        device.controls.forEach((c)=>{
+                            if(c.type == "urn:x-nmos:control:sr-ctrl/v1.0" ){
+                                let href = c.href;
+                                if(href[href.length-1] != "/"){
+                                    href += "/";
+                                }
+                                href += "single/senders/"+senderId+"/active/";
+                                active_href.push(href)
+                            }
+                        });
+                        
+                        
+                    }catch(e){}
+
+                    if(active_href.length == 0){
+                        SyncLog.log("warn", "NMOS", "Can not get active configuration of sender, no controls available.")
+                    }
+
+                    for(let href of active_href){
+                        try{
+                            let response = await axios.get(href);
+                            this.nmosState.senderActiveData[senderId] = response.data;
+                            return;
+                        }catch(e){
+                            SyncLog.log("warn", "NMOS", "Can not get active configuration of sender:",{error: e.message, href : href});
+                        }
+                    }
+
+                    this.syncNmos.setState(this.nmosState);
+                    this.updateCrosspoint();
+                }
+            } else {
+                if (type == "senders") {
+                    // remove element
+                    try {
+                        delete this.nmosState.senderActiveData[g.path];
+                        this.syncNmos.setState(this.nmosState);
+                        this.updateCrosspoint();
                     } catch (e) {}
                     
                 }
@@ -538,6 +668,10 @@ export class NmosRegistryConnector {
         },2000)
     }
 
+
+    reconnectOnChanges(senderId:string){
+        CrosspointAbstraction.instance.reconnectOnChangesFromNmos(senderId);
+    }
 
     async connectionGetSenderInfo(senderId:string){
         let info:CrosspointConnectionSenderInfo = {
@@ -612,7 +746,10 @@ export class NmosRegistryConnector {
         }
 
         let patch: any = {
-            activation: { mode: "activate_immediate" },
+            activation: { 
+                mode: "activate_immediate",
+                requested_time: null,
+             },
             transport_params: [],
         };
 
@@ -680,9 +817,16 @@ export class NmosRegistryConnector {
         }
 
         if(senderInfo.transport == "rtp.mcast" || senderInfo.transport == "rtp"){
+            let manifest = senderInfo.manifestFile;
+
+            if(this.settings.fixSdpBugs){
+                manifest = manifest.replace("colorimetry=UNSPECIFIED;", "colorimetry=BT709;");
+                manifest = manifest.replace("TCS=UNSPECIFIED;", "TCS=SDR;");
+            }
+
             patch.transport_file = {
                 type: "application/sdp",
-                data: senderInfo.manifestFile,
+                data: manifest,
             };
         }
 
@@ -762,6 +906,198 @@ export class NmosRegistryConnector {
         }
         let id = SyncLog.log("error", "nmos_connect", "Receiver Control unreachable.",{controlHrefs,patch});
         throw new LoggedError("Receiver Control unreachable.", id);
+    }
+
+
+
+    async enableFlow(senderId:string, disable=false){
+
+        try{
+            let versionFound = false;
+            let controlHrefs = [];
+
+            let sender = this.nmosState.senders[senderId];
+            let device = this.nmosState.devices[sender.device_id];
+
+            let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
+
+            for(let type of controlTypes){
+                device.controls.forEach((control)=>{
+                    if(control.type == type.type){
+                        controlHrefs.push({href:control.href, version:type.version});
+                        versionFound = true;
+                    }
+                })
+                if(versionFound){
+                    break;
+                }
+            }
+
+            let patch:any = {
+                "receiver_id": null,
+                "master_enable": true,
+                "activation": {
+                    "mode": "activate_immediate",
+                    "requested_time": null,
+                },
+                "transport_params": [
+                    {
+                        "rtp_enabled": true,
+                    },
+                    {
+                        "rtp_enabled": true,
+                    }
+                ]
+            };
+
+            if(disable){
+                patch = {
+                    "receiver_id": null,
+                    "master_enable": false,
+                    "activation": {
+                        "mode": "activate_immediate",
+                        "requested_time": null,
+                    },
+                    "transport_params": [
+                        {
+                            "rtp_enabled": false,
+                        },
+                        {
+                            "rtp_enabled": false,
+                        }
+                    ]
+                };
+            }
+
+
+            for(let href of controlHrefs){
+                // TODO, version specific things
+                let fixSlash = ""
+                if(href.href[href.href.length-1] == "/"){
+                    fixSlash = ""
+                }else{
+                    fixSlash = "/"
+                }
+                let patchHref = href.href + fixSlash + "single/senders/" + senderId + "/staged";
+                try{
+                    await axios.patch(patchHref, patch, {timeout:30000});
+                    SyncLog.log("success", "nmos", "Successfully enabled: "+senderId, {href:patchHref, data:patch})
+                    return;
+                }catch(e){
+                    if (axios.isAxiosError(e)) {
+                        if(e.code == "ETIMEDOUT"){
+                            // NEXT
+                            SyncLog.log("info", "nmos", "Patch on "+senderId+" timed out, trying next.");
+                        }else{
+                            // TODO....
+                            if(e.code == "ERR_BAD_REQUEST"){
+                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response.data,});
+                            }else{
+                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
+                            }
+                            return;
+                        }
+                    }else{
+                        return;
+                    }
+                }
+            }
+        }catch(e){
+
+        }
+
+    }
+
+
+    async setFlowMulticast(senderId:string, data:any){
+
+        try{
+            let versionFound = false;
+            let controlHrefs = [];
+
+            let sender = this.nmosState.senders[senderId];
+            let device = this.nmosState.devices[sender.device_id];
+
+            let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
+
+            for(let type of controlTypes){
+                device.controls.forEach((control)=>{
+                    if(control.type == type.type){
+                        controlHrefs.push({href:control.href, version:type.version});
+                        versionFound = true;
+                    }
+                })
+                if(versionFound){
+                    break;
+                }
+            }
+
+            let patch:any = {
+                "receiver_id": null,
+                "activation": {
+                    "mode": "activate_immediate",
+                    "requested_time": null,
+                },
+                "transport_params": [
+                    {
+                        
+                    },
+                    {
+                       
+                    }
+                ]
+            };
+
+            data.legs.forEach((l)=>{
+                patch.transport_params[l.index] = {destination_ip:l.multicast, source_ip:"auto"}
+            });
+
+            
+
+            for(let href of controlHrefs){
+                // TODO, version specific things
+                let fixSlash = ""
+                if(href.href[href.href.length-1] == "/"){
+                    fixSlash = ""
+                }else{
+                    fixSlash = "/"
+                }
+                let patchHref = href.href + fixSlash + "single/senders/" + senderId + "/staged";
+                try{
+                    await axios.patch(patchHref, patch, {timeout:30000});
+                    SyncLog.log("success", "nmos", "Successfully set multicast: "+senderId, {href:patchHref, data:patch});
+
+
+                    setTimeout(()=>{
+                        this.getSenderActive("senders", {path:senderId, post:sender});
+                        this.getSenderManifestData("senders", {path:senderId, post:sender});
+                    },1000);
+
+
+                    return;
+                }catch(e){
+                    if (axios.isAxiosError(e)) {
+                        if(e.code == "ETIMEDOUT"){
+                            // NEXT
+                            SyncLog.log("info", "nmos", "Patch on "+senderId+" timed out, trying next.");
+                        }else{
+                            // TODO....
+                            if(e.code == "ERR_BAD_REQUEST"){
+                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response.data,});
+                            }else{
+                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
+                            }
+                            return;
+                        }
+                    }else{
+                        return;
+                    }
+                }
+            }
+        }catch(e){
+
+        }
+
     }
 
 

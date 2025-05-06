@@ -7,7 +7,10 @@
       BarsArrowDown,
       BarsArrowUp, 
       ArrowUturnLeft,
-      CodeBracket
+      CodeBracket,
+
+      Trash
+
     } from "svelte-hero-icons";
     import SetupFlow from "../../lib/SetupFlow.svelte";
     import SetupDevice from "../../lib/SetupDevice.svelte";
@@ -57,6 +60,7 @@
         {id:"edidInput", name:"Input EDID" ,     sortable:false,  resize:false  , canHide:true},
         {id:"edidNativeResInput", name:"Input Native Resolution" ,     sortable:false,  resize:false  , canHide:true},
         {id:"edidModeMenu", name:"" ,     sortable:false,  resize:false  , canHide:true},
+        
     ]
 
     
@@ -100,6 +104,7 @@
         sync = ServerConnector.sync("mediadevmatroxcip")
         sync.subscribe((obj:any)=>{
             sourceState = obj;
+            console.log(obj)
              doFilter();
         });
       try{
@@ -363,6 +368,19 @@
         });
      }
 
+
+
+     function deleteDevice(sn:string){
+      ServerConnector.startLoad();
+      ServerConnector.post("matroxcip_deletedevice",{sn:sn}).then((f:any)=>{
+        ServerConnector.endLoad();
+        ServerConnector.addFeedback({level:"success",message:"Device deleted."})
+        }).catch((e)=>{
+          ServerConnector.endLoad();
+          ServerConnector.addFeedback({level:"error",message:"Can not delete: "+ e.message})
+        });
+     }
+
      
      function getMenuTxScalerMode(dev:any){
         let data:any = {entry:[]}
@@ -377,7 +395,9 @@
         for(let res of sourceState.settings.resolutions){
           data.entry.push({label:"Force Resolution: "+res.name,callback:()=>{changeResolution(dev.sn,res.name)}})
       }
-      data.entry.push({label:"Scale to EDID",callback:()=>{changeResolution(dev.sn,"__edid")}})
+      if(dev.hasEdid){
+        data.entry.push({label:"Scale to EDID",callback:()=>{changeResolution(dev.sn,"__edid")}})
+      }
       data.entry.push({label:"Auto",callback:()=>{changeResolution(dev.sn,"__input")}})
       return data
      }
@@ -583,7 +603,7 @@
                         <td class="{(col.fixed ? "data-table-fixed-col":"")}" style="{col.fixedOffset ? "left:"+col.fixedOffset+"px;":""}">
 
                           {#if col.id == "state"}
-                          <div class="badge badge-{ dev.failed ? (dev.sessionConflict ? "warning":"error") : "success"} badge-sm" data-tooltip-position="right,bottom" use:OverlayMenuService.tooltip data-tooltip={dev.error}></div>
+                            <div class="badge badge-{ dev.failed ? (dev.sessionConflict ? "warning":"error") : "success"} badge-sm" data-tooltip-position="right,bottom" use:OverlayMenuService.tooltip data-tooltip={dev.error}></div>
                           {/if}
 
                             {#if col.id == "sn"}
@@ -732,23 +752,28 @@
 
                                 {#if col.id == "audioFormat"}
                                   {#if dev.inputAudioPresent}
-                                    { dev.inputAudio }
-                                    {:else}
+                                    <div class="data-table-flex-row">
+                                      <div class="badge badge-success badge-sm"></div>
+                                      <div style="min-width:100px;">{ dev.inputAudio }</div>
+                                    </div>
+                                  {:else}
+                                    <div class="data-table-flex-row">
                                       <div class="badge badge-info badge-outline badge-sm"></div>
-                                      Not present
-                                    {/if}
+                                      <div style="min-width:100px;">Not present</div>
+                                    </div>
+                                  {/if}
                                 {/if}
                                 {#if col.id == "inputResolution"}
                                     {#if dev.inputPresent}
-                                    
-                                      <div class="badge badge-success badge-sm"></div>
-                                      {dev.inputResolution}
-                                    
+                                      <div class="data-table-flex-row">
+                                        <div class="badge badge-success badge-sm"></div>
+                                        <div>{dev.inputResolution}</div>
+                                      </div>
                                     {:else}
-                                    
-                                      <div class="badge badge-info badge-outline badge-sm"></div>
-                                      Not present
-                                    
+                                      <div class="data-table-flex-row">
+                                        <div class="badge badge-info badge-outline badge-sm"></div>
+                                        <div>Not present</div>
+                                      </div>
                                     {/if}
                                 {/if}
 
@@ -776,7 +801,7 @@
                                     {/if}
                                 {/if}
 
-                                {#if col.id == "edidModeMenu"}
+                                {#if col.id == "edidModeMenu" && dev.hasEdid}
                                   <button class="btn btn-circle" on:click={(evt)=>{menu.open(getMenuInputEdid(dev),evt)}}>
                                     <Icon src={EllipsisVertical}></Icon>
                                   </button>
@@ -790,28 +815,36 @@
                             {#if dev.direction == "rx"}
 
                             {#if col.id == "audioFormat"}
-                              {#if dev.inputAudioPresent}
-                                { dev.inputAudio }
-                              {:else}
-                                  <div class="badge badge-info badge-outline badge-sm"></div>
-                                  Not present
+                                {#if dev.inputAudioPresent}
+                                  <div class="data-table-flex-row">
+                                    <div class="badge badge-success badge-sm"></div>
+                                    <div style="min-width:100px;">{ dev.inputAudio }</div>
+                                  </div>
+                                {:else}
+                                  <div class="data-table-flex-row">
+                                    <div class="badge badge-info badge-outline badge-sm"></div>
+                                    <div style="min-width:100px;">Not present</div>
+                                  </div>
                                 {/if}
                               {/if}
 
                                 {#if col.id == "inputResolution"}
 
                                 {#if dev.inputPresent}
-                                
+
+
+                                <div class="data-table-flex-row">
                                         <div class="badge badge-success badge-sm"></div>
-                                        {dev.inputResolution}
+                                        <div style="min-width:100px;">{dev.inputResolution}</div>
+                                </div>
                                       
                                         
                                     {:else}
                                         
-                                    
+                                    <div class="data-table-flex-row">
                                           <div class="badge badge-info badge-outline badge-sm"></div>
-                                          Not present
-                                        
+                                          <div style="min-width:100px;">Not present</div>
+                                    </div>
                                     {/if}
 
                                     {/if}
@@ -857,7 +890,7 @@
                         </td>
                     {/if}
                 {/each}
-                <td>
+                <td class="data-table-action-buttons">
                     {#if dev.loading}
                         <button class="btn btn-circle btn-info" data-tooltip-position="left,bottom" use:OverlayMenuService.tooltip data-tooltip="Reload Active">
                             <Icon src={ArrowPath}></Icon>
@@ -871,6 +904,10 @@
                             <Icon src={ArrowPath}></Icon>
                         </button>
                     {/if}
+
+                    <button class="btn btn-circle" on:click={()=>{deleteDevice(dev.sn)}}>
+                      <Icon src={Trash}></Icon>
+                    </button>
                 </td>
             </tr>
         {/each}

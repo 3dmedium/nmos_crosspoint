@@ -11,14 +11,15 @@ This tool is tested against a lot of devices and now stable and performant with 
 - List of all NMOS Devices and Flows in the Network
 - Connecting Flows to Receivers (Crosspoint style)
 - Integration for prorietary device overview and control
+- Connection to Companion (Beta)
+- Managing of all Multicast adresses (Beta)
+- Reconnect on flow changes
 
 ## Planned features
 
-- Managing of all Multicast adresses
 - Virtual senders and receivers
 - Network topology view
 - Active, network aware routing (SDN Like)
-- Connection to Companion
 - IS-07 ( Connecting WebSocket Data Streams is already working with easy-nmos-node )
 - IS-08 ( Work in progress)
 

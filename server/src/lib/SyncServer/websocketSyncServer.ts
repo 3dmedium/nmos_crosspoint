@@ -202,7 +202,12 @@ export class WebsocketSyncServer {
         
         try{
             let permis = this.authData.permissions[required];
-            let groups = this.authData.users[user].groups;
+
+            let groups = [];
+            if(user!="__noAuth"){
+                groups = this.authData.users[user].groups;
+            }
+
             if(write){
                 if( permis.denyWrite.users.includes(user) || permis.denyWrite.groups.some((v)=>groups.includes(v))){
                     return false;
@@ -220,7 +225,9 @@ export class WebsocketSyncServer {
             }
             
         
-        }catch(e){}
+        }catch(e){
+            console.log(e)
+        }
         return false;
      }
 }

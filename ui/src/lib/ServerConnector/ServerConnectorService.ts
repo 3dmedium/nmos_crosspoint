@@ -37,6 +37,8 @@ class _ServerConnector {
 
     authTimer:null|any = null;
 
+    serverRejectedOnce = false;
+
     overlayFeedbackList:ServerFeedback[] = [];
 
     public addFeedback(feedback:ServerFeedback){
@@ -128,6 +130,7 @@ class _ServerConnector {
       }
       this.authTimer = setTimeout(()=>{
         this.doLogout()
+        console.error("closing logout")
         this.authTimer = null;
       }, this.authTimeout );
     }
@@ -138,18 +141,20 @@ class _ServerConnector {
       setInterval(()=>{
         
         try{
-          let pass:any = localStorage.getItem("nmoscrosspoint_pass");
-          if(pass){
-            pass = JSON.parse(pass);
-            if(pass.logout){
-              this.doLogout();
-              return;
-            }else if(this.pass == "" && pass.time > (new Date().getTime() - this.closedAuthTimeout)){
-              this.pass = pass.pass;
-              this.sendAuth();
+          if(this.serverRejectedOnce){
+            let pass:any = localStorage.getItem("nmoscrosspoint_pass");
+            if(pass){
+              pass = JSON.parse(pass);
+              if(pass.logout){
+                this.doLogout();
+                return;
+              }else if(this.pass == "" && pass.time > (new Date().getTime() - this.closedAuthTimeout)){
+                this.pass = pass.pass;
+                this.sendAuth();
+              }
+            }else{
+              
             }
-          }else{
-            
           }
         }catch(e){
           this.pass = "";
@@ -249,6 +254,7 @@ class _ServerConnector {
     private disconnect() {
         if (this.ws) {
           try {
+            console.error("closing")
             this.ws.close();
           } catch (e) {}
         }
@@ -279,6 +285,8 @@ class _ServerConnector {
           }
         };
         this.ws.onclose = (event) => {
+
+          console.error(event)
 
           this.connected = false;
           this.connectionState.next("disconnected");
@@ -343,6 +351,7 @@ class _ServerConnector {
             this.requestAuth(true);
             break;
           case 'permissionDenied':
+            this.serverRejectedOnce = true;
             if(this.user == "__noAuth"){
               this.requestAuth();
             }else{

@@ -4,8 +4,8 @@
     },
     "permissions":{
         "global":{
-            "allowRead":{"users":[],"groups":["user"]},
-            "allowWrite":{"users":[],"groups":["user"]},
+            "allowRead":{"users":["__noAuth"],"groups":["user"]},
+            "allowWrite":{"users":["__noAuth"],"groups":["user"]},
             "denyRead":{"users":[],"groups":[]},
             "denyWrite":{"users":[],"groups":[]}
         },

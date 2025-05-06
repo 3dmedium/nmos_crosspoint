@@ -99,7 +99,7 @@ label svg { width:20px;}
 
 .overlay-tooltip {
         position:absolute; 
-        z-index : 1000;
+        z-index : 999;
             span {
                 @apply menu shadow;
                 background-color: theme('colors.slate.700');

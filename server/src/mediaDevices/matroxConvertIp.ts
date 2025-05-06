@@ -35,7 +35,8 @@ class MatroxCipDevice {
     firmwareMode:string="";
     firmwareVersion:string="";
 
-    type:string = ""
+    type:string = "";
+    hasEdid:boolean = false;
 
     safeMode:boolean = false
     goldenMode:boolean = false
@@ -172,6 +173,19 @@ export default class MediaDevMatroxConvertIp {
             rejectUnauthorized: !this.config.ignoreHttps,
             keepAlive: true
         });
+
+
+        try{
+            if (!fs.existsSync("./state/mediadev_matroxcip")) {
+                fs.mkdirSync("./state/mediadev_matroxcip");
+                console.log("Folder created: ./state/mediadev_matroxcip");
+            }
+        }catch(e){
+            console.error("Error while creating Folder: ./state/mediadev_matroxcip");
+        }
+
+
+
         try {
             let rawFile = fs.readFileSync("./config/mediadev_matroxcip/matroxcip.json");
             let top = JSON.parse(rawFile);
@@ -189,7 +203,8 @@ export default class MediaDevMatroxConvertIp {
             let top = JSON.parse(rawFile);
             this.state = top;
         } catch (e) {
-            console.error("Error reading from file: ./state/mediadev_matroxcip/matroxcipstate.json");
+            console.warn("Error reading from file: ./state/mediadev_matroxcip/matroxcipstate.json");
+            console.warn("File will be created on first use.");
         }
 
         try {
@@ -197,7 +212,8 @@ export default class MediaDevMatroxConvertIp {
             let top = JSON.parse(rawFile);
             this.authState = top;
         } catch (e) {
-            console.error("Error reading from file: ./state/mediadev_matroxcip/matroxcipstateauth.json");
+            console.warn("Error reading from file: ./state/mediadev_matroxcip/matroxcipstateauth.json");
+            console.warn("File will be created on first use.");
         }
 
         this.state.settings.edids = this.config.edids;
@@ -337,6 +353,16 @@ export default class MediaDevMatroxConvertIp {
             });
         });
 
+        server.addRoute("POST", "matroxcip_deletedevice","global", (client: WebsocketClient, query:string[], postData: any) => {
+            return new Promise((resolve, reject) => {
+                this.deleteDevice(postData.sn).then(()=>{
+                    resolve({});    
+                }).catch((e)=>{
+                    reject({status:400, message:e.message});
+                })
+            });
+        });
+
         
 
         NmosRegistryConnector.registerHook("nodes", (id,data)=>{this.nodeChange(id,data)})
@@ -402,7 +428,9 @@ export default class MediaDevMatroxConvertIp {
                                         cip.sn = sn;
                                         cip.ipList = [element.data];
                                         this.state.devices[sn]=cip;
-                                        this.reloadData(cip.ipList, cip.sn, cip);
+                                        setTimeout(()=>{
+                                            this.reloadData(cip.ipList, cip.sn, cip);
+                                        },1000);
                                         SyncLog.log("info", "matroxcip", "Added Matrox CIP from MDNS: " +sn +", " + cip.ipList[0])
                                     }
                                 }
@@ -552,7 +580,7 @@ export default class MediaDevMatroxConvertIp {
                 this.reloadData(ips, sn, cip);
                 setTimeout(()=>{
                     this.reloadData(ips, sn, cip);
-                },3000);
+                },5000);
                 
 
             }
@@ -561,7 +589,23 @@ export default class MediaDevMatroxConvertIp {
 
 
     flowChange(id:string, data:any){
-        //console.log("Flow Changed: ", data)
+        try{
+            let idpart = id.split('-');
+                let sn = idpart[0];
+                if(sn[sn.length-1] == "0"){
+                    sn = sn.slice(0,sn.length-1);
+                } 
+                if(this.state.devices.hasOwnProperty(sn)){
+                    let cip = this.state.devices[sn];
+
+                    this.reloadData(this.state.devices[sn].ipList, sn, cip);
+                    setTimeout(()=>{
+                        this.reloadData(this.state.devices[sn].ipList, sn, cip);
+                    },5000);
+                }
+            
+        }catch(e){}
+
     }
 
     // Web Accessible
@@ -599,8 +643,6 @@ export default class MediaDevMatroxConvertIp {
         if(reboot){
             await sleep(100);
             await this.apiRequest(ipList,sn,"POST","/device/reboot",{"maintenanceMode":false},true);
-            await sleep(1000);
-            this.reloadData(ipList,sn,cip);
         }else{
             this.reloadData(ipList,sn,cip);
         }
@@ -632,7 +674,9 @@ export default class MediaDevMatroxConvertIp {
             }
             await this.apiRequest(ipList,sn,"POST","/device/settings/video/in/mode",{isEdidOverrideEnabled: true, selectEdid: "custom0",noSignalOption:cip.inputNoSignal})
         }
-        await this.reloadData(ipList,sn,this.state.devices[sn]);    
+        setTimeout(()=>{
+            this.reloadData(ipList,sn,this.state.devices[sn]);    
+        },2000)
     }
 
     async fixPtpDomain(sn:string){
@@ -652,7 +696,10 @@ export default class MediaDevMatroxConvertIp {
         let data = context.ptpSettings;
         data.domain = this.ptpDomain
         let result = await this.apiRequest(ipList, sn, "POST", "/device/settings/ptp", data);
-        this.reloadData(ipList,sn,cip)
+
+        setTimeout(()=>{
+            this.reloadData(ipList,sn,cip)
+        },2000)
     }
 
 
@@ -731,9 +778,10 @@ export default class MediaDevMatroxConvertIp {
                 }
             }
         }
+        
         setTimeout(()=>{
             this.reloadData(ipList,sn,cip)
-        },1000)
+        },2000)
     }
     async masterEnable(sn:string){
         let ipList:string[] = [];
@@ -751,9 +799,28 @@ export default class MediaDevMatroxConvertIp {
         let data = context.StreamsEnableSettings;
         data.enable = true;
         await this.apiRequest(ipList, sn, "POST", "/device/settings/streams/master", data);
-        await this.reloadData(ipList,sn,cip);
+        
+        setTimeout(()=>{
+            this.reloadData(ipList,sn,cip)
+        },2000)
     }
 
+    async deleteDevice(sn:string){
+        try{
+            delete this.state.devices[sn];
+        }catch(e){
+            throw new Error("Can not delete device.");
+        }
+
+        try{
+            delete this.authState[sn];
+        }catch(e){}
+
+        this.syncList.setState(this.state);
+        this.updateQuickState();
+        this.saveState();
+
+    }
 
 
 
@@ -899,12 +966,14 @@ export default class MediaDevMatroxConvertIp {
                                 cip.direction = "rx"
                                 cip.simpleMode = "IP/JPEG-XS to HDMI"
                                 cip.type = "DSH"
+                                cip.hasEdid = true;
                             break;
                             case "fpga2110_hdmi_unc_jpegxs_sfp_10G_tx":
                                 cip.firmwareMode = "HDMI JPEG-XS 10G TX"
                                 cip.direction = "tx"
                                 cip.simpleMode = "HDMI to IP/JPEG-XS"
                                 cip.type = "DSH"
+                                cip.hasEdid = true;
                             break;
 
                             case "fpga2110_hdmi_unc_sfp_10_25G_tx":
@@ -912,6 +981,7 @@ export default class MediaDevMatroxConvertIp {
                                 cip.direction = "tx"
                                 cip.simpleMode = "HDMI to IP"
                                 cip.type = "DSH"
+                                cip.hasEdid = true;
                             break;
 
                             case "fpga2110_hdmi_unc_sfp_10_25G_rx":
@@ -919,6 +989,7 @@ export default class MediaDevMatroxConvertIp {
                                 cip.direction = "rx"
                                 cip.simpleMode = "IP to HDMI"
                                 cip.type = "DSH"
+                                cip.hasEdid = true;
                             break;
 
                             case "fpga2110_hdmi_colibri_combo_rj45_1_2G5_rx":
@@ -926,6 +997,7 @@ export default class MediaDevMatroxConvertIp {
                                 cip.direction = "rx"
                                 cip.simpleMode = "IP/Colibri to HDMI"
                                 cip.type = "SRH"
+                                cip.hasEdid = true;
                             break;
 
                             case "fpga2110_hdmi_colibri_combo_rj45_1_2G5_tx":
@@ -933,6 +1005,7 @@ export default class MediaDevMatroxConvertIp {
                                 cip.direction = "rx"
                                 cip.simpleMode = "IP/Colibri to HDMI"
                                 cip.type = "SRH"
+                                cip.hasEdid = true;
                             break;
 
                             case "fpga2110_hdmi_jpegxs_combo_rj45_1_2G5_rx":
@@ -940,6 +1013,7 @@ export default class MediaDevMatroxConvertIp {
                                 cip.direction = "rx"
                                 cip.simpleMode = "IP/JPEG-XS to HDMI"
                                 cip.type = "SRH"
+                                cip.hasEdid = true;
                             break;
 
                             case "fpga2110_hdmi_jpegxs_combo_rj45_1_2G5_tx":
@@ -947,6 +1021,43 @@ export default class MediaDevMatroxConvertIp {
                                 cip.direction = "tx"
                                 cip.simpleMode = "HDMI to IP/JPEG-XS"
                                 cip.type = "SRH"
+                                cip.hasEdid = true;
+                            break;
+
+
+
+
+                            // SDI / DSS
+
+                            case "fpga2110_sdi_unc_jpegxs_sfp_10G_rx":
+                                cip.firmwareMode = "SDI JPEG-XS 10G RX"
+                                cip.direction = "rx"
+                                cip.simpleMode = "IP/JPEG-XS to SDI"
+                                cip.type = "DSS"
+                                cip.hasEdid = false;
+                            break;
+                            case "fpga2110_sdi_unc_jpegxs_sfp_10G_tx":
+                                cip.firmwareMode = "SDI JPEG-XS 10G TX"
+                                cip.direction = "tx"
+                                cip.simpleMode = "SDI to IP/JPEG-XS"
+                                cip.type = "DSS"
+                                cip.hasEdid = false;
+                            break;
+
+                            case "fpga2110_sdi_unc_sfp_10_25G_tx":
+                                cip.firmwareMode = "SDI 10G/25G TX"
+                                cip.direction = "tx"
+                                cip.simpleMode = "SDI to IP"
+                                cip.type = "DSS"
+                                cip.hasEdid = false;
+                            break;
+
+                            case "fpga2110_sdi_unc_sfp_10_25G_rx":
+                                cip.firmwareMode = "SDI 10/25G RX"
+                                cip.direction = "rx"
+                                cip.simpleMode = "IP to SDI"
+                                cip.type = "DSS"
+                                cip.hasEdid = false;
                             break;
 
 
@@ -990,12 +1101,16 @@ export default class MediaDevMatroxConvertIp {
                         }else{
                             cip.flowMode = "mixed";
                         }
-                        if(context.RxMonitorEdidHeader.isHeaderValid){
+
+                        if(context.RxMonitorEdidHeader && context.RxMonitorEdidHeader.isHeaderValid){
                             cip.edidMonitor = context.RxMonitorEdidHeader.monitorName
                             cip.edidNativeResMonitor = context.RxMonitorEdidHeader.nativeResolution
                         }else{
                             cip.edidMonitor = "Not connected"
                             cip.edidNativeResMonitor = ""
+                            if(!cip.hasEdid){
+                                cip.edidMonitor = "-";
+                            }
                         }
                         
                         if(context.videoInSettings.isEdidOverrideEnabled){
@@ -1020,6 +1135,9 @@ export default class MediaDevMatroxConvertIp {
                         }else{
                             cip.edidInput = "Native Matrox"
                             cip.edidNativeResInput = ""
+                            if(!cip.hasEdid){
+                                cip.edidInput = "-";
+                            }
                         }
 
 
@@ -1203,7 +1321,7 @@ export default class MediaDevMatroxConvertIp {
                         throw new Error("Other Session active")
                     }else{
                         SyncLog.log("error","MatroxCIP", "Auth not possible: "+ ipList.join(", "),e.response.data);
-                    throw new Error(e.response.data.message);
+                        throw new Error(e.response.data.message);
                     }
                 }else{
                     throw new Error(e.message);

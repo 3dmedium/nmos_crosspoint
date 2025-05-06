@@ -43,8 +43,9 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
             }
         });
     }
-
-    constructor(){
+    settings:any = {};
+    constructor(config:any){
+        this.settings = config;
 
         this.startWorker();
 
@@ -82,6 +83,39 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
         }catch(e){}
         return null;
     }
+
+
+    enableFlow(id:string, disable=false){
+        return new Promise((resolve, reject) => {
+            if(id.startsWith("nmos_")){
+                let nmosId = id.slice(5);
+                NmosRegistryConnector.instance.enableFlow(nmosId,disable);
+            } 
+            resolve({});
+        });
+    }
+
+    setMulticast(id:string, data:any){
+        return new Promise((resolve, reject) => {
+            if(id.startsWith("nmos_")){
+                let nmosId = id.slice(5);
+                NmosRegistryConnector.instance.setFlowMulticast(nmosId,data);
+            } 
+            resolve({});
+        });
+    }
+
+    
+    crosspointApi(data:any){
+        return new Promise((resolve, reject) => {
+            this.worker.postMessage(JSON.stringify({
+                crosspointChanges:data
+            }));
+            // TODO feedback.....
+            resolve({});
+        });
+    }
+
 
     changeAlias(id:string, alias:string){
         return new Promise((resolve, reject) => {
@@ -131,7 +165,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                 let source = c.source+""
                 let destination = c.destination+""
                 let disconnect = false
-                if(source == ""){
+                if(source == "" || source =="__disconnect"){
                     // Disconnect
                     disconnect = true
                 }
@@ -420,6 +454,39 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
         });
     }
 
+
+    reconnectOnChangesFromNmos( senderId:string ){
+        if(!this.settings.reconnectOnSdpChanges){
+            return;
+        }
+        let nmos_senderId = "nmos_"+senderId
+        let src:CrosspointFlow = null;
+        for(let dev of this.crosspointState.devices){
+            for(let type of Object.keys(dev.senders)){
+                for( let flow of dev.senders[type]){
+                    if(flow.id == nmos_senderId){
+                       src = flow;
+                       break;
+                    }
+                }
+            }
+        }
+
+        if(src){
+            for(let dev of this.crosspointState.devices){
+                for(let type of Object.keys(dev.receivers)){
+                    for( let flow of dev.receivers[type]){
+                        if(flow.connectedFlow == nmos_senderId){
+                           let dst = flow;
+                           this.executeConnection(src,dst).then(()=>{}).catch(()=>{});
+                           SyncLog.info("crosspoint","Executed reconnection on SDP Changed: " + src.id +" > "+dst.id);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     updateFromNmos(state:any){
         this.nmosState = state;
         this.update();
@@ -439,6 +506,10 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
 
         if(data.hasOwnProperty("log")){
             SyncLog.log(data.log.severity, data.log.topic, data.log.text, data.log.raw);
+        }
+
+        if(data.hasOwnProperty("nmosSetMulticast")){
+            NmosRegistryConnector.instance.setFlowMulticast(data.nmosSetMulticast.nmosId,data.nmosSetMulticast.multicast);
         }
     }
 
@@ -470,6 +541,7 @@ export interface CrosspointFlow {
     available:boolean,
     active:boolean,
     num:number,
+    dynamic:boolean,
     name:string,
 
     alias:string,
@@ -494,6 +566,7 @@ export interface CrosspointDevice {
     order:number,
     available:boolean,
     num:number,
+    dynamic:boolean,
     name:string,
     ip:string,
     alias:string,

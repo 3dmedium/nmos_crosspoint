@@ -161,6 +161,20 @@
 
 
 
+    .data-table-action-buttons {
+        display:flex;
+        flex-direction:row;
+        button {margin-right:10px;}
+    }
+
+    .data-table-flex-row {
+        display:flex;
+        flex-direction:row;
+        div {margin-right:5px;}
+    }
+
+
+
 
     
 }
