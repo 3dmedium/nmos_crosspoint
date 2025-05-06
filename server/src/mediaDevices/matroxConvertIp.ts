@@ -371,7 +371,7 @@ export default class MediaDevMatroxConvertIp {
         NmosRegistryConnector.registerModifier("receivers", (id,data)=>{
             try{
                 let idpart = id.split("-");
-                if(idpart[idpart.length-1] == "000000000000"){
+                if(idpart[idpart.length-1].endsWith("0000000000")){
                     // Fix changing Group Hints in Matrox
                     data.tags["urn:x-nmos:tag:grouphint/v1.0"][0] = data.tags["urn:x-nmos:tag:grouphint/v1.0"][0].replace(" 0:Video", ":Video");
                     data.tags["urn:x-nmos:tag:grouphint/v1.0"][0] = data.tags["urn:x-nmos:tag:grouphint/v1.0"][0].replace(" 1:Video", ":Video");
@@ -392,7 +392,7 @@ export default class MediaDevMatroxConvertIp {
         NmosRegistryConnector.registerModifier("senders", (id,data)=>{
             try{
                 let idpart = id.split("-");
-                if(idpart[idpart.length-1] == "000000000000"){
+                if(idpart[idpart.length-1].endsWith("0000000000")){
                     // Fix changing Group Hints in Matrox
                     data.tags["urn:x-nmos:tag:grouphint/v1.0"][0] = data.tags["urn:x-nmos:tag:grouphint/v1.0"][0].replace(" 0:Video", ":Video");
                     data.tags["urn:x-nmos:tag:grouphint/v1.0"][0] = data.tags["urn:x-nmos:tag:grouphint/v1.0"][0].replace(" 1:Video", ":Video");
@@ -557,7 +557,7 @@ export default class MediaDevMatroxConvertIp {
     nodeChange(id:string, data:any){
         try{
             let idpart = id.split('-');
-            if(idpart[idpart.length-1] == "000000000000"){
+            if(idpart[idpart.length-1].endsWith("0000000000")){
                 let sn = idpart[0];
                 if(sn[sn.length-1] == "0"){
                     sn = sn.slice(0,sn.length-1);
