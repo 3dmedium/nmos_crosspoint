@@ -45,6 +45,11 @@ To get one up and running, you can use the one provided by rhastie: [https://git
 
 You can simply rename the `server/config_example` folder to `server/config` please see the config files for possible Settings, documentation has to be done.
 
+At startup on some installations there are some warnings about missing files, the System will create these files as soon as there is something to store.
+As there is no `state` folder on some installations these fiels are not created. Just create a state folder and the subfolders named in the warnings and you are fine. You do not need to create the files.
+
+There is a Bug with Authentification which does not allow unauthentificated access. Will be fixed soon, but for now you have to crete a password (SHA256 in the `users.json` file)
+
 ## Installation
 
 The simplest way to get NMOS Crosspoint up and running is to use Docker Compose.
