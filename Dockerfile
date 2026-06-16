@@ -1,4 +1,4 @@
-FROM node:20 AS base
+FROM node:24 AS base
 
 COPY ./ui /nmos-crosspoint/ui
 COPY ./server /nmos-crosspoint/server
