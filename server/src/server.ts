@@ -104,6 +104,21 @@ if(users){
 }
 
 
+
+
+
+server.addSyncObject("log","global",log);
+
+server.addRoute("POST", "log", "global", (client: WebsocketClient, query:string[], postData: any) => {
+    return new Promise((resolve, reject) => {
+        log.getSearch(postData)
+            .then((data) => resolve({message:200, data:data}))
+            .catch((m) => reject(m));
+    });
+});
+
+
+
 // TODO.... load dynamic....
 const mediaDevices = new MediaDevices(settings);
 
@@ -112,8 +127,6 @@ const nmosConnector = new NmosRegistryConnector(settings);
 
 
 
-
-server.addSyncObject("log","global",log);
 
 server.addSyncObject("nmos","global",nmosConnector.syncNmos);
 server.addSyncObject("nmosConnectionState","global",nmosConnector.syncConnectionState);

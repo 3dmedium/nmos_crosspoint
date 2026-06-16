@@ -3,7 +3,7 @@
         {"ip":"10.1.0.211","port":80,"priority":10, "domain":""}
     ],
     "logFiles":"./log/",
-    "logOutput":true,
+    "logOutput":false,
     "server":{
         "port":80,
         "address":"0.0.0.0"

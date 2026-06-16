@@ -13,6 +13,10 @@ export class SyncLog extends SyncObject {
     static instance: SyncLog;
 
 
+    static critical(topic: string,text: string, raw: any= null) {
+        return SyncLog.log("critical",  topic,text, raw);
+    }
+
     static error(topic: string,text: string, raw: any= null) {
         return SyncLog.log("error",  topic,text, raw);
     }
@@ -35,7 +39,7 @@ export class SyncLog extends SyncObject {
         let date = new Date(time).toISOString();
 
         
-        if(SyncLog.consoleDebug || severity == "error"){
+        if(SyncLog.consoleDebug || severity == "critical"){
             console.log(date + "  -  " +severity + " " + topic +"  -  " + text);
             if(raw){
                 console.log(JSON.stringify(raw,null,2));
@@ -45,8 +49,8 @@ export class SyncLog extends SyncObject {
 
         
         if (SyncLog.instance) {
-            let id = SyncLog.instance.lastLogId++;
-            SyncLog.instance.pushMessage(id, time, severity,topic, text,  raw);
+            
+            let id = SyncLog.instance.pushMessage( time, severity,topic, text,  raw);
             return id;
         } else {
             return -1;
@@ -56,7 +60,7 @@ export class SyncLog extends SyncObject {
     constructor() {
         super("log");
         this.setState({logList:[],lastLogId:0})
-        SyncLog.consoleDebug = true;
+        SyncLog.consoleDebug = false;
         SyncLog.instance = this;
 
     }
@@ -73,6 +77,11 @@ export class SyncLog extends SyncObject {
     limitHistoryMem = 20000;
     logHistory = [];
     lastLogId = 0;
+
+    async getSearch(search:any){
+        return {}
+
+    }
     
 
     readState(objectId) {
@@ -82,30 +91,32 @@ export class SyncLog extends SyncObject {
         }
         this.endReadState(objectId, { logList: [] });
     }
-    pushMessage(id:number, time:number, severity: string, topic: string, text: string,  raw: any) {
-            let message = {
-                id:id,
-                time: time,
-                severity,
-                text,
-                topic,
-                raw,
-            };
+    pushMessage(time:number, severity: string, topic: string, text: string,  raw: any) {
+        let id = this.lastLogId++;
+        let message = {
+            id:id,
+            time: time,
+            severity,
+            text,
+            topic,
+            raw,
+        };
 
-            let state = this.getStateCopy();
+        let state = this.getStateCopy();
 
-            this.logHistory.push(message);
-            if (this.logHistory.length > this.limitHistoryMem) {
-                this.logHistory.shift();
-            }
-            state.logList.push(message);
-            if (state.logList.length > this.limitHistory) {
-                state.logList.shift();
-            }
+        this.logHistory.push(message);
+        if (this.logHistory.length > this.limitHistoryMem) {
+            this.logHistory.shift();
+        }
+        state.logList.push(message);
+        if (state.logList.length > this.limitHistory) {
+            state.logList.shift();
+        }
 
-            state.lastLogId = message.id;
+        state.lastLogId = message.id;
 
-            this.setState(state);
+        this.setState(state);
+        return id;
     }
 }
 

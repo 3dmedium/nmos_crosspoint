@@ -49,6 +49,21 @@ class CrosspointUpdateThread{
             this.update(data);
         });
 
+
+        try{
+            if (!fs.existsSync("./state")) {
+                fs.mkdirSync("./state");
+                parentPort.postMessage(JSON.stringify({
+                    log:{severity:"info", topic:"Crosspoint Settings", text:"Created folder: ./state", raw:null}
+                }));
+                console.log("Created folder: ./state");
+            }
+        }catch(e){
+            parentPort.postMessage(JSON.stringify({
+                log:{severity:"critical", topic:"Crosspoint Settings", text:"Can not create folder: ./state ..." + e, raw:null}
+            }));
+        }
+
         try {
             let rawFile = fs.readFileSync("./state/crosspoint.json");
             this.crosspointShadow = JSON.parse(rawFile);
