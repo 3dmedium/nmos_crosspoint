@@ -740,6 +740,7 @@ export class NmosRegistryConnector {
 
     async makeConnection(receiverId:string, senderInfo: CrosspointConnectionSenderInfo){
 
+        let disconnect = senderInfo.senderId == "disconnect";
         if(senderInfo.error != ""){
             SyncLog.log("warning", "NMOS Connect", "No valid sender Info: " + senderInfo.error);
             throw new Error(senderInfo.error);
@@ -751,13 +752,12 @@ export class NmosRegistryConnector {
                 requested_time: null,
              },
             transport_params: [],
+            master_enable: !disconnect,
         };
 
         
 
-        if(senderInfo.senderId == "disconnect"){
-            //
-        }else{
+        if(!disconnect){
             patch.sender_id = senderInfo.senderId;
         }
 
@@ -794,7 +794,7 @@ export class NmosRegistryConnector {
 
         for (i = 0; i < interfaceCount; i++) {
             if(senderInfo.transport == "rtp.mcast" || senderInfo.transport == "rtp"){
-                patch.transport_params.push({interface_ip:"auto",rtp_enabled:true});
+                patch.transport_params.push({interface_ip:"auto",rtp_enabled: !disconnect});
             }else if(senderInfo.transport == "websocket"){
                 // TODO Websocket / MQTT
                 patch.transport_params.push({});
@@ -830,27 +830,7 @@ export class NmosRegistryConnector {
             };
         }
 
-        if(senderInfo.senderId == "disconnect"){
-            patch.master_enable = false;
-        }else{
-            patch.master_enable = true;
-        }
-        // Warum ????
-
-        //if (receiver.subscription.active) {
-        //if (!receiverInformation.active.master_enable) {
-            //if(senderInfo.senderId == "disconnect"){
-            //    patch.master_enable = false;
-            //}else{
-            //
-            //}
-        //}else{
-            //if(senderInfo.senderId == "disconnect"){
-            //    
-            //}else{
-            //    patch.master_enable = true;
-            //}
-        //}
+        
 
         let versionFound = false;
         let controlHrefs = [];
@@ -910,125 +890,90 @@ export class NmosRegistryConnector {
 
 
 
-    async enableFlow(senderId: string, disable = false) {
-    try {
-        let versionFound = false;
-        let controlHrefs: any[] = [];
+    async enableFlow(senderId:string, disable=false){
 
-        const sender = this.nmosState.senders[senderId];
-        const device = this.nmosState.devices[sender.device_id];
+        try{
+            let versionFound = false;
+            let controlHrefs:any[] = [];
 
-        const controlTypes = [
-            { type: "urn:x-nmos:control:sr-ctrl/v1.1", version: "v1.1" },
-            { type: "urn:x-nmos:control:sr-ctrl/v1.0", version: "v1.0" }
-        ];
+            let sender = this.nmosState.senders[senderId];
+            let device = this.nmosState.devices[sender.device_id];
 
-        for (const type of controlTypes) {
-            device.controls.forEach((control: any) => {
-                if (control.type === type.type) {
-                    controlHrefs.push({
-                        href: control.href,
-                        version: type.version
-                    });
-                    versionFound = true;
-                }
-            });
+            let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
 
-            if (versionFound) break;
-        }
-
-        for (const href of controlHrefs) {
-
-            let fixSlash = href.href.endsWith("/") ? "" : "/";
-            const baseUrl = href.href + fixSlash;
-            const patchHref = baseUrl + "single/senders/" + senderId + "/staged";
-            const activeHref = baseUrl + "single/senders/" + senderId + "/active";
-
-            try {
-                // Erst active lesen -> Anzahl Legs erkennen
-                const activeRes = await axios.get(activeHref, { timeout: 5000 });
-                const active = activeRes.data;
-
-                const legCount =
-                    Array.isArray(active.transport_params) &&
-                    active.transport_params.length > 0
-                        ? active.transport_params.length
-                        : 1;
-
-                const patch = {
-                    receiver_id: null,
-                    master_enable: !disable,
-                    activation: {
-                        mode: "activate_immediate",
-                        requested_time: null
-                    },
-                    transport_params: Array.from(
-                        { length: legCount },
-                        () => ({
-                            rtp_enabled: !disable
-                        })
-                    )
-                };
-
-                await axios.patch(patchHref, patch, { timeout: 30000 });
-
-                SyncLog.log(
-                    "success",
-                    "nmos",
-                    `Successfully ${disable ? "disabled" : "enabled"}: ${senderId}`,
-                    { href: patchHref, data: patch }
-                );
-
-                return;
-
-            } catch (e) {
-
-                if (axios.isAxiosError(e)) {
-
-                    if (e.code === "ETIMEDOUT") {
-                        SyncLog.log(
-                            "info",
-                            "nmos",
-                            "Patch on " + senderId + " timed out, trying next."
-                        );
-                        continue;
+            for(let type of controlTypes){
+                device.controls.forEach((control)=>{
+                    if(control.type == type.type){
+                        controlHrefs.push({href:control.href, version:type.version});
+                        versionFound = true;
                     }
-
-                    if (e.code === "ERR_BAD_REQUEST") {
-                        SyncLog.log(
-                            "error",
-                            "nmos",
-                            "Sender " + senderId + " returned Error: " + e.code,
-                            {
-                                controlHrefs,
-                                failedControl: patchHref,
-                                error: e.response?.data
-                            }
-                        );
-                    } else {
-                        SyncLog.log(
-                            "error",
-                            "nmos",
-                            "Sender " + senderId + " returned Error: " + e.code,
-                            {
-                                controlHrefs,
-                                failedControl: patchHref,
-                                message: e.message
-                            }
-                        );
-                    }
-
-                    return;
+                })
+                if(versionFound){
+                    break;
                 }
-
-                return;
             }
+
+
+
+            let legCount = 1;
+            if(Array.isArray(sender.interface_bindings) && sender.interface_bindings.length > 0){
+                sender.interface_bindings.length
+            }
+
+
+            let patch:any = {
+                "receiver_id": null,
+                "master_enable": !disable,
+                "activation": {
+                    "mode": "activate_immediate",
+                    "requested_time": null,
+                },
+                transport_params: Array.from(
+                    { length: legCount },
+                    () => ({
+                        rtp_enabled: !disable
+                    })
+                )
+            };
+
+            
+
+            for(let href of controlHrefs){
+                // TODO, version specific things
+                let fixSlash = "/"
+                if(href.href.endsWith("/")){
+                    fixSlash = ""
+                }
+                let patchHref = href.href + fixSlash + "single/senders/" + senderId + "/staged";
+                try{
+                    await axios.patch(patchHref, patch, {timeout:15000});
+                    SyncLog.log("success", "nmos", "Successfully "+ (disable?"disabled":"enabled") + ": "+senderId, {href:patchHref, data:patch})
+                    return;
+                }catch(e){
+                    if (axios.isAxiosError(e)) {
+                        if(e.code == "ETIMEDOUT"){
+                            // NEXT
+                            SyncLog.log("info", "nmos", "Patch on "+senderId+" timed out, trying next.");
+                        }else{
+                            // TODO....
+                            if(e.code == "ERR_BAD_REQUEST"){
+                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response?.data,});
+                            }else{
+                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
+                            }
+                            return;
+                        }
+                    }else{
+                        return;
+                    }
+                }
+            }
+        }catch(e){
+            SyncLog.log("error", "nmos", "enableFlow crashed", { senderId, error: e });
         }
 
-    } catch (e) {
-        SyncLog.log("error", "nmos", "enableFlow crashed", { senderId, error: e });
     }
-}
+
 
     async setFlowMulticast(senderId:string, data:any){
 
