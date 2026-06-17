@@ -40,8 +40,12 @@
       "video/raw" : "RAW Video",
       "video/jxsv" : "JPEG-XS Video",
       "video/colibri" : "Colibri Video",
+      "video/VC2" : "VC-2 Video",
+
       "audio/L16" : "16 Bit LPCM",
       "audio/L24" : "24 Bit LPCM",
+      "audio/L32" : "24in32 Bit LPCM",
+
       "audio/AM824" : "ST2110-31 AES3",
       "video/smpte291":"ANC"
     }

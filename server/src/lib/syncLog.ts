@@ -77,8 +77,9 @@ export class SyncLog extends SyncObject {
     limitHistoryMem = 20000;
     logHistory = [];
     lastLogId = 0;
-
+    
     async getSearch(search:any){
+        // TODO search full History
         return {}
 
     }
@@ -93,29 +94,29 @@ export class SyncLog extends SyncObject {
     }
     pushMessage(time:number, severity: string, topic: string, text: string,  raw: any) {
         let id = this.lastLogId++;
-        let message = {
-            id:id,
-            time: time,
-            severity,
-            text,
-            topic,
-            raw,
-        };
+            let message = {
+                id:id,
+                time: time,
+                severity,
+                text,
+                topic,
+                raw,
+            };
 
-        let state = this.getStateCopy();
+            let state = this.getStateCopy();
 
-        this.logHistory.push(message);
-        if (this.logHistory.length > this.limitHistoryMem) {
-            this.logHistory.shift();
-        }
-        state.logList.push(message);
-        if (state.logList.length > this.limitHistory) {
-            state.logList.shift();
-        }
+            this.logHistory.push(message);
+            if (this.logHistory.length > this.limitHistoryMem) {
+                this.logHistory.shift();
+            }
+            state.logList.push(message);
+            if (state.logList.length > this.limitHistory) {
+                state.logList.shift();
+            }
 
-        state.lastLogId = message.id;
+            state.lastLogId = message.id;
 
-        this.setState(state);
+            this.setState(state);
         return id;
     }
 }

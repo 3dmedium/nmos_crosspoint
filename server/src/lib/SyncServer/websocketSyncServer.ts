@@ -19,8 +19,14 @@ interface SyncObjectList {
 }
 
 export class WebsocketSyncServer {
-    public static init(address:string, port:number) {
-        WebsocketSyncServer.instance = new WebsocketSyncServer(address,port);
+    /**
+     * Initialise the server. `beforeCatchAll` runs after static asset
+     * middleware but before the SPA-fallback `/*` handler, so external
+     * modules (NmosNodeApi for `/x-nmos/...`, etc.) can register their own
+     * Express routes without being shadowed by the index.html fallback.
+     */
+    public static init(address:string, port:number, beforeCatchAll?: (app:any)=>void) {
+        WebsocketSyncServer.instance = new WebsocketSyncServer(address,port,beforeCatchAll);
     }
 
     authData:any = {
@@ -160,10 +166,10 @@ export class WebsocketSyncServer {
         }
     }
 
-    private constructor(address:string, port:number) {
+    private constructor(address:string, port:number, beforeCatchAll?: (app:any)=>void) {
         this.wss = new WebSocket.Server({ noServer: true });
         this.wss.on("connection", (ws) => {
-            
+
             const client = new WebsocketClient(ws, {});
             this.clientList.push(client);
             SyncLog.log("verbose", "Server", "New Client connected", {env:client.getEnv} );
@@ -171,15 +177,22 @@ export class WebsocketSyncServer {
 
         this.server = express();
         this.server.use("/*", (req, res, next) => {
-            //res.setHeader("Cache-Control", "must-revalidate"); 
-            //res.setHeader("service-worker-allowed", "/"); 
+            //res.setHeader("Cache-Control", "must-revalidate");
+            //res.setHeader("service-worker-allowed", "/");
             next();
         });
         this.server.use("/assets/connectionWorker.js", (req, res, next) => {
-            res.setHeader("service-worker-allowed", "/"); 
+            res.setHeader("service-worker-allowed", "/");
             next();
         });
         this.server.use(express.static("./public"));
+        // Hook for modules that need to register routes (e.g. /x-nmos/...)
+        // BEFORE the SPA-fallback below would swallow them.
+        if(typeof beforeCatchAll === "function"){
+            try{ beforeCatchAll(this.server); }catch(e:any){
+                SyncLog.log("error", "Server", "beforeCatchAll callback failed: " + (e?.message || e));
+            }
+        }
         this.server.all("/*", function (req, res, next) {
             res.sendFile(path.resolve("./") + "/public/index.html");
         });

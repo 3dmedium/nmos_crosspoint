@@ -268,6 +268,8 @@ export class NmosRegistryConnector {
                     this.connections[fullResource].ws.close();
                 }catch(e){}
             }
+            // TODO implement Ping Pong for timeouts for each connection
+            // TODO, verify no simultaneous connections are made
             this.connections[fullResource] = {
                 version,
                 subscription,
@@ -280,7 +282,7 @@ export class NmosRegistryConnector {
 
             this.connections[fullResource].ws.onclose = () => {
                 this.connections[fullResource].ws.onmessage = (message) => {};
-                
+
                 SyncLog.log("error",  "NMOS","Closed subscription to Registry: " + nmosRegistryUrl + ", " + resource + ", " + version );
                 setTimeout(()=>{
                     this.getVersionSubscription(nmosRegistryUrl,resource,version );
@@ -294,7 +296,7 @@ export class NmosRegistryConnector {
             this.connections[fullResource].ws.onmessage = (message) => {
                 this.updateState(JSON.parse(message.data),version);
             };
-            
+
             SyncLog.log("info",  "NMOS","Subscribed to Registry: " + nmosRegistryUrl + ", " + resource + ", " + version );
         }).catch((error) => {
             
@@ -382,7 +384,7 @@ export class NmosRegistryConnector {
                                 }
 
                                 this.nmosState[type][g.path] = postData;
-                                
+
                             }
 
                         }
@@ -526,34 +528,36 @@ export class NmosRegistryConnector {
                     }catch(e){}
 
                     
-                    if (manifest_href && active && senderId) {
-                        //console.log("----- load manifest for "+label)
+                    // request all SDP files, from inactive senders too
+                    // If inactive, ignore errors.
+                    if (manifest_href && senderId) {
                         axios.get(g.post.manifest_href).then(response => {
                             if(response.data.length > 10){
                                 // TODO Check for BAD SDP Files, is this already enough, more than 10 chars and more than 0 flows
                                 let sdp = sdpTransform.parse(response.data);
                                 sdp["_RAWSDP"] = response.data;
-                                if(sdp.media.length == 0){
-                                    SyncLog.log("warn", "NMOS", "Got BAD SDP File for Flow: " + label + " ( ID: " + senderId +" )")  
-                                    try{
-                                        // TODO Test
-                                        delete this.nmosState["sendersManifestDetail"][senderId];
-                                        this.syncNmos.setState(this.nmosState);
-                                    }catch(e){}
-                                }else{
-                                    if(this.nmosState["sendersManifestDetail"][senderId] && this.nmosState["sendersManifestDetail"][senderId]._RAWSDP && this.nmosState["sendersManifestDetail"][senderId]._RAWSDP.length > 10 ){
-                                        if(this.nmosState["sendersManifestDetail"][senderId]._RAWSDP != sdp["_RAWSDP"]){
-                                            this.reconnectOnChanges(senderId);
-                                        }
+
+                                // Check if reconnect is needed, basically only if SDP file has changed, not for new SDP files without data.
+                                if(sdp.media.length > 0 && active){
+                                    if(this.nmosState["sendersManifestDetail"][senderId]._RAWSDP != sdp["_RAWSDP"]){
+                                        this.reconnectOnChangesFromSdp(senderId);
                                     }
-                                    this.nmosState["sendersManifestDetail"][senderId] = sdp;
-                                    this.syncNmos.setState(this.nmosState);
-                                    this.updateCrosspoint();
                                 }
+                                
+                                // log debug info when a active sender reports 
+                                if(sdp.media.length < 1 && active){
+                                    SyncLog.log("warn", "NMOS", "Got BAD SDP File (no media info) for Flow: " + label + " ( ID: " + senderId +" )")
+                                }
+                                // write new Data to state
+                                this.nmosState["sendersManifestDetail"][senderId] = sdp;
+                                this.syncNmos.setState(this.nmosState);
+                                this.updateCrosspoint();
                             }else{
-                                SyncLog.log("warn", "NMOS", "Got BAD SDP File for Flow: " + label + " ( ID: " + senderId +" )")    
+                                //SDP files with less than 10 characters are always bad
+                                if(active){
+                                    SyncLog.log("warn", "NMOS", "Got BAD SDP File (file too small) for Flow: " + label + " ( ID: " + senderId +" )")
+                                }
                                 try{
-                                    // TODO Test
                                     delete this.nmosState["sendersManifestDetail"][senderId];
                                 }catch(e){}
                             }
@@ -594,16 +598,30 @@ export class NmosRegistryConnector {
                         sender = g.post;
                         device = this.nmosState.devices[sender.device_id];
 
-                        device.controls.forEach((c)=>{
-                            if(c.type == "urn:x-nmos:control:sr-ctrl/v1.0" ){
-                                let href = c.href;
-                                if(href[href.length-1] != "/"){
-                                    href += "/";
+                        // Accept BOTH supported IS-05 control versions.
+                        // Devices that advertise v1.1 only (e.g. QSC Core)
+                        // previously slipped through this filter, which left
+                        // their senderActiveData empty — and the Multicast
+                        // Lease Manager could never reconcile the address.
+                        // Order matters: v1.1 first, so newer devices that
+                        // advertise both don't get stuck on the older URL
+                        // (which may exist for compatibility but lack fields).
+                        // TODO make prefered version configurable in settings
+                        let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
+                        for(let ctrlType of controlTypes){
+                            device.controls.forEach((c:any)=>{
+                                if(c.type === ctrlType.type){
+                                    let href = c.href;
+                                    if(href[href.length-1] !== "/"){
+                                        href += "/";
+                                    }
+                                    href += "single/senders/"+senderId+"/active/";
+                                    active_href.push(href);
                                 }
-                                href += "single/senders/"+senderId+"/active/";
-                                active_href.push(href)
-                            }
-                        });
+                            });
+                            // at least one href was found, next loop will only give different versions
+                            if(active_href.length > 0) break;
+                        }
                         
                         
                     }catch(e){}
@@ -663,14 +681,27 @@ export class NmosRegistryConnector {
             list.push(entry);
         });
         this.syncConnectionState.setState({ registries: list });
-        setTimeout(()=>{
+
+        // Re-arm the periodic refresh as a SINGLE timer. This method is also
+        // called directly on connection open/close and on registry switch;
+        // without clearing the previous timer first, every such call used to
+        // spawn an additional independent 2 s loop, so the number of
+        // structuredClone()+setState passes per second grew without bound
+        // over the lifetime of the process. Keeping one handle caps it at
+        // exactly one refresh every 2 s.
+        if(this.connectionStateTimer != null){
+            clearTimeout(this.connectionStateTimer);
+        }
+        this.connectionStateTimer = setTimeout(()=>{
+            this.connectionStateTimer = null;
             this.updateSyncConnectionState();
-        },2000)
+        }, 2000);
     }
+    private connectionStateTimer:any = null;
 
 
-    reconnectOnChanges(senderId:string){
-        CrosspointAbstraction.instance.reconnectOnChangesFromNmos(senderId);
+    reconnectOnChangesFromSdp(senderId:string){
+        CrosspointAbstraction.instance.reconnectOnChangesFromSdp(senderId);
     }
 
     async connectionGetSenderInfo(senderId:string){
@@ -746,25 +777,28 @@ export class NmosRegistryConnector {
             throw new Error(senderInfo.error);
         }
 
+        // IS-05 v1.x: `requested_time` MUST NOT be supplied for
+        // `activate_immediate` activations. Sending `null` works on most
+        // devices but strict implementations (Merging Anubis) reject the
+        // whole PATCH with HTTP 500. So we leave it absent.
         let patch: any = {
-            activation: { 
+            activation: {
                 mode: "activate_immediate",
-                requested_time: null,
              },
             transport_params: [],
             master_enable: !disconnect,
         };
 
-        
+
 
         if(!disconnect){
             patch.sender_id = senderInfo.senderId;
         }
 
         let deviceId
-        let device 
-        let nodeId 
-        let node 
+        let device
+        let nodeId
+        let node
         let receiver
         try{
             receiver = this.nmosState.receivers[receiverId]
@@ -786,33 +820,73 @@ export class NmosRegistryConnector {
             })
         });
 
-        
+        // TODO, fix mixed up Amber/Blue Legs
+        //      Regenerate SDP with exchanged Primary/Secondary parts
+        //      Use exchanged Multicast/Source for Patch request
 
-
-        let interfaceCount = Math.min(senderInfo.interfaces.length, interfaces.length);
-        let i = 0;
-
-        for (i = 0; i < interfaceCount; i++) {
-            if(senderInfo.transport == "rtp.mcast" || senderInfo.transport == "rtp"){
-                patch.transport_params.push({interface_ip:"auto",rtp_enabled: !disconnect});
-            }else if(senderInfo.transport == "websocket"){
-                // TODO Websocket / MQTT
-                patch.transport_params.push({});
-            }else if(senderInfo.transport == "mqtt"){
-                // TODO Websocket / MQTT
-                patch.transport_params.push({});
-            }else{
-                SyncLog.log("warning", "NMOS Connect", "Sender has no transport Information.");
-                throw new Error("Transport Type missing.");
+        // Parse the SDP so we can build EXPLICIT transport_params per leg
+        // (multicast_ip / destination_port / source_ip). Some receivers
+        // (Anubis among them) reject `{interface_ip:"auto"}` when the SDP
+        // has fewer media blocks than the receiver has interface_bindings,
+        // so we MUST also disable the surplus legs with rtp_enabled:false.
+        let sdpLegs: Array<{ multicast_ip:string, destination_port:number, source_ip:string }> = [];
+        if(senderInfo.transport == "rtp.mcast" || senderInfo.transport == "rtp"){
+            try{
+                let parsedSdp:any = sdpTransform.parse(senderInfo.manifestFile || "");
+                if(parsedSdp && Array.isArray(parsedSdp.media)){
+                    sdpLegs = parsedSdp.media.map((m:any) => {
+                        let destIp = "";
+                        let srcIp  = "";
+                        try{
+                            if(m.sourceFilter && m.sourceFilter.destAddress){
+                                destIp = "" + m.sourceFilter.destAddress;
+                                srcIp  = "" + (m.sourceFilter.srcList || "");
+                            }else if(m.connection && m.connection.ip){
+                                destIp = ("" + m.connection.ip).split("/")[0];
+                            }else if(parsedSdp.connection && parsedSdp.connection.ip){
+                                destIp = ("" + parsedSdp.connection.ip).split("/")[0];
+                            }
+                        }catch(e){}
+                        // TODO: default Port of 5004 as fallback seems strange why is this needed, are there valid SDP files with no port?
+                        // Check what fields are used for port parsing in sdp-transform library.
+                        let port = (typeof m.port === "number" && m.port > 0) ? m.port : 5004;  
+                        return { multicast_ip: destIp, destination_port: port, source_ip: srcIp };
+                    });
+                }
+            }catch(e){
+                SyncLog.log("warning", "NMOS Connect", "Could not parse SDP for transport_params: " + (e?.message || e));
             }
         }
 
-        interfaceCount = receiver.interface_bindings.length;
-        for (i = i; i < interfaceCount; i++) {
+        let receiverLegCount = receiver.interface_bindings.length;
+        for(let i = 0; i < receiverLegCount; i++){
             if(senderInfo.senderId == "disconnect"){
                 patch.transport_params.push({ rtp_enabled: false });
-            }else{
+                continue;
+            }
+            if(senderInfo.transport == "rtp.mcast" || senderInfo.transport == "rtp"){
+                // The SDP has exactly one transport entry per `m=` block.
+                // Receiver legs without a matching media block must be
+                // explicitly disabled — leaving them as `{rtp_enabled:true,
+                // interface_ip:"auto"}` makes strict receivers reject the
+                // whole PATCH because there's no media to bind to.
+                if(i < sdpLegs.length && sdpLegs[i].multicast_ip){
+                    let leg:any = {
+                        multicast_ip:     sdpLegs[i].multicast_ip,
+                        destination_port: sdpLegs[i].destination_port,
+                        rtp_enabled:      true
+                    };
+                    if(sdpLegs[i].source_ip){ leg.source_ip = sdpLegs[i].source_ip; }
+                    patch.transport_params.push(leg);
+                }else{
+                    patch.transport_params.push({ rtp_enabled: false });
+                }
+            }else if(senderInfo.transport == "websocket" || senderInfo.transport == "mqtt"){
+                // TODO Websocket / MQTT
                 patch.transport_params.push({});
+            }else{
+                SyncLog.log("warning", "NMOS Connect", "Sender has unsupported transport Information.");
+                throw new Error("Transport Type unknown.");
             }
         }
 
@@ -820,6 +894,7 @@ export class NmosRegistryConnector {
             let manifest = senderInfo.manifestFile;
 
             if(this.settings.fixSdpBugs){
+                // UNSPECIFIED is valid in newer NMOS Specifications. Still some devices reject patch when receiving this
                 manifest = manifest.replace("colorimetry=UNSPECIFIED;", "colorimetry=BT709;");
                 manifest = manifest.replace("TCS=UNSPECIFIED;", "TCS=SDR;");
             }
@@ -830,10 +905,11 @@ export class NmosRegistryConnector {
             };
         }
 
-        
+
 
         let versionFound = false;
         let controlHrefs = [];
+        // TODO, make configurable
         let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
 
         for(let type of controlTypes){
@@ -894,11 +970,12 @@ export class NmosRegistryConnector {
 
         try{
             let versionFound = false;
-            let controlHrefs:any[] = [];
+            let controlHrefs = [];
 
             let sender = this.nmosState.senders[senderId];
             let device = this.nmosState.devices[sender.device_id];
 
+            // TODO make versions configurable
             let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
 
             for(let type of controlTypes){
@@ -916,7 +993,7 @@ export class NmosRegistryConnector {
 
 
             let legCount = 1;
-            if(Array.isArray(sender.interface_bindings) && sender.interface_bindings.length > 0){
+                if(Array.isArray(sender.interface_bindings) && sender.interface_bindings.length > 0){
                 sender.interface_bindings.length
             }
 
@@ -936,7 +1013,7 @@ export class NmosRegistryConnector {
                 )
             };
 
-            
+
 
             for(let href of controlHrefs){
                 // TODO, version specific things
@@ -953,13 +1030,13 @@ export class NmosRegistryConnector {
                     if (axios.isAxiosError(e)) {
                         if(e.code == "ETIMEDOUT"){
                             // NEXT
-                            SyncLog.log("info", "nmos", "Patch on "+senderId+" timed out, trying next.");
+                            SyncLog.log("info", "nmos", "Toggle Flow Active: Patch on "+senderId+" timed out, trying next.");
                         }else{
                             // TODO....
                             if(e.code == "ERR_BAD_REQUEST"){
-                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response?.data,});
+                                SyncLog.log("error", "nmos", "Toggle Flow Active: Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response?.data,});
                             }else{
-                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
+                                SyncLog.log("error", "nmos", "Toggle Flow Active: Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
                             }
                             return;
                         }
@@ -969,9 +1046,79 @@ export class NmosRegistryConnector {
                 }
             }
         }catch(e){
-            SyncLog.log("error", "nmos", "enableFlow crashed", { senderId, error: e });
+
         }
 
+    }
+
+
+    /**
+     * Toggle a receiver's master_enable flag. Used by the Details page
+     * to activate / deactivate a receiver without changing its current
+     * sender subscription (sender_id and transport_file stay in place).
+     */
+    async enableReceiver(receiverId:string, disable=false){
+        try{
+            let versionFound = false;
+            let controlHrefs:any[] = [];
+
+            let receiver = this.nmosState.receivers[receiverId];
+            if(!receiver){
+                SyncLog.log("warning", "NMOS", "Cannot toggle receiver, unknown id: " + receiverId);
+                return;
+            }
+            let device = this.nmosState.devices[receiver.device_id];
+
+            // TODO make versions configurable
+            let controlTypes = [
+                {type:"urn:x-nmos:control:sr-ctrl/v1.1", version:"v1.1"},
+                {type:"urn:x-nmos:control:sr-ctrl/v1.0", version:"v1.0"}
+            ];
+            for(let type of controlTypes){
+                device.controls.forEach((control:any)=>{
+                    if(control.type == type.type){
+                        controlHrefs.push({href:control.href, version:type.version});
+                        versionFound = true;
+                    }
+                });
+                if(versionFound){ break; }
+            }
+
+            let patch:any = {
+                master_enable: !disable,
+                activation: {
+                    mode: "activate_immediate",
+                }
+            };
+
+            for(let href of controlHrefs){
+                let fixSlash = "/"
+                if(href.href.endsWith("/")){
+                    fixSlash = ""
+                }
+                let patchHref = href.href + fixSlash + "single/receivers/" + receiverId + "/staged";
+                try{
+                    await axios.patch(patchHref, patch, {timeout:30000});
+                    SyncLog.log("success", "nmos", "Successfully " + (disable?"disabled":"enabled") + " receiver: " + receiverId, {href:patchHref, data:patch});
+                    return;
+                }catch(e:any){
+                    if(axios.isAxiosError(e)){
+                        if(e.code == "ETIMEDOUT"){
+                            SyncLog.log("info", "nmos", "Toggle Receiver Active: Patch on " + receiverId + " timed out, trying next.");
+                        }else{
+                            if(e.code == "ERR_BAD_REQUEST"){
+                                SyncLog.log("error", "nmos", "Toggle Flow Active: Sender "+receiverId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response?.data,});
+                            }else{
+                                SyncLog.log("error", "nmos", "Toggle Flow Active: Sender "+receiverId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
+                            }
+                            return;
+                        }
+                    }else{
+                        return;
+                    }
+                }
+            }
+        }catch(e){}
     }
 
 
@@ -984,6 +1131,7 @@ export class NmosRegistryConnector {
             let sender = this.nmosState.senders[senderId];
             let device = this.nmosState.devices[sender.device_id];
 
+            // TODO, make versions configurable
             let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
 
             for(let type of controlTypes){
@@ -998,25 +1146,95 @@ export class NmosRegistryConnector {
                 }
             }
 
+            // Determine number of legs the sender actually advertises.
+            let legCount = 1;
+
+            try{
+                if(Array.isArray(sender.interface_bindings) && sender.interface_bindings.length > 0){
+                    legCount = sender.interface_bindings.length;
+                }
+                // When present, the cached senderActive Data is used
+                let activeData = this.nmosState.senderActiveData[senderId];
+                if(activeData && Array.isArray(activeData.transport_params) && activeData.transport_params.length > 0){
+                    legCount = activeData.transport_params.length;
+                }
+            }catch(e){}
+
+            // Also stretch the array if the requested index demands it
+            if(Array.isArray(data.legs)){
+                data.legs.forEach((l:any)=>{
+                    if(typeof l.index === "number" && l.index + 1 > legCount){
+                        legCount = l.index + 1;
+                    }
+                });
+            }
+
+            let transportParams:any[] = [];
+            for(let i=0;i<legCount;i++){
+                transportParams.push({});
+            }
+
+            // Preserve the sender's current master_enable across the PATCH.
+            // Per IS-05 a missing field means "leave unchanged", but some
+            // firmwares (notably Merging Anubis) misread the omission and
+            // deactivate the sender when only transport_params change. By
+            // echoing back whatever subscription.active is right now we
+            // make the behaviour deterministic across vendors.
+
+            // Fallback, If current master enabled can not be determined, omit value.
+
             let patch:any = {
                 "receiver_id": null,
                 "activation": {
                     "mode": "activate_immediate",
                     "requested_time": null,
                 },
-                "transport_params": [
-                    {
-                        
-                    },
-                    {
-                       
-                    }
-                ]
+                "transport_params": transportParams
             };
 
+            try{
+                let s:any = this.nmosState.senders[senderId];
+                if(s && s.subscription){
+                    patch["master_enable"] =  s.subscription.active;
+                }
+
+                
+                // Also consult the cached IS-05 active snapshot — its
+                // master_enable is authoritative when present.
+                let active:any = this.nmosState.senderActiveData[senderId];
+                if(active && typeof active.master_enable === "boolean"){
+                    patch["master_enable"] = active.master_enable;
+                }
+            }catch(e){}
+
+            
+
+            let meaningfulChange = false;
             data.legs.forEach((l)=>{
-                patch.transport_params[l.index] = {destination_ip:l.multicast, source_ip:"auto"}
+
+                let leg:any = {source_ip:"auto"};
+                if(l.multicast !== undefined && l.multicast !== null && l.multicast !== ""){
+                    leg.destination_ip = l.multicast;
+                    meaningfulChange = true;
+                }
+                if(l.port !== undefined && l.port !== null && l.port !== ""){
+                    let p = parseInt(""+l.port);
+                    if(!isNaN(p) && p > 0 && p < 65536){
+                        leg.destination_port = p;
+                        meaningfulChange = true;
+                    }
+                }
+                patch.transport_params[l.index] = leg;
             });
+
+            // Last-line-of-defence: never send a PATCH that would only set
+            // `source_ip: "auto"` on every leg. Such a no-op PATCH causes the
+            // reconcile loop to fire forever because nothing on the device
+            // changes.
+            if(!meaningfulChange){
+                SyncLog.log("warn", "nmos", "Refusing to send empty setFlowMulticast PATCH for " + senderId + " (no destination_ip / destination_port).");
+                return;
+            }
 
             
 
@@ -1039,6 +1257,7 @@ export class NmosRegistryConnector {
                         this.getSenderManifestData("senders", {path:senderId, post:sender});
                     },1000);
 
+                    // TODO optional: force follow of receivers on changed multicasts
 
                     return;
                 }catch(e){

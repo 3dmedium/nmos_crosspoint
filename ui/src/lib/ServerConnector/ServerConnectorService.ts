@@ -117,6 +117,8 @@ class _ServerConnector {
     pingLastTime = 0;
     pingRoundtrip = -1;
 
+    pingIntervalMs = 10000;
+
     loading = 0;
 
     authSeed = "";
@@ -263,15 +265,15 @@ class _ServerConnector {
       private connect() {
         this.ws = new WebSocket(this.wsUrl);
         this.ws.onopen = (event) => {
-          
-          
+
+
 
           this.pingLastTime = Date.now();
           if (this.ws) {
             this.ws.send('ping');
 
             this.connected = true;
-          this.connectionState.next("connected");            
+          this.connectionState.next("connected");
 
             this.reconnectTime = 1;
             setTimeout(() => {
@@ -301,7 +303,7 @@ class _ServerConnector {
           }, this.reconnectTime * 1000);
         };
         this.ws.onerror = (event) => {};
-    
+
         this.ws.onmessage = (event) => {
           if (typeof event.data == 'string' && event.data.startsWith('pong')) {
             this.pingRoundtrip = Date.now() - this.pingLastTime;
@@ -315,7 +317,7 @@ class _ServerConnector {
             this.pingLastTime = Date.now();
             this.ws.send('ping');
           }
-        }, 10000);
+        }, this.pingIntervalMs);
       }
     
       private processMessage(text: string) {
@@ -527,34 +529,39 @@ class _ServerConnector {
     
       public sync(channel: string, id: string | number = 0): Subject<any> {
         this.resetAuthTimer();
-        if (!this.syncList.hasOwnProperty(channel + '_' + id)) {
-          this.syncList[channel + '_' + id] = {
+        const channel_id = channel + '_' + id;
+        if (!this.syncList.hasOwnProperty(channel_id)) {
+          this.syncList[channel_id] = {
             channel: channel,
             observable: null,
             objectId: id,
             state: undefined,
             refCount: 0,
           };
-    
-          this.syncList[channel + '_' + id].observable = new Subject<any>();
+
+          this.syncList[channel_id].observable = new Subject<any>();
           this.subscribeSync(channel, id);
         }
-        this.syncList[channel + '_' + id].refCount++;
-        if (this.syncList[channel + '_' + id].state) {
+        this.syncList[channel_id].refCount++;
+        if (this.syncList[channel_id].state) {
           setTimeout(() => {
-            this.syncList[channel + '_' + id].observable.next(
-              this.syncList[channel + '_' + id].state
+            this.syncList[channel_id].observable.next(
+              this.syncList[channel_id].state
             );
           }, 0);
         }
-        return this.syncList[channel + '_' + id].observable;
+        return this.syncList[channel_id].observable;
       }
+
+
+      
       public unsync(channel: string, id: string | number = 0) {
+        const channel_id = channel + '_' + id;
         try {
-          this.syncList[channel + '_' + id].refCount--;
-          if (this.syncList[channel + '_' + id].refCount < 1) {
+          this.syncList[channel_id].refCount--;
+          if (this.syncList[channel_id].refCount < 1) {
             this.stopSync(channel, id);
-            delete this.syncList[channel + '_' + id];
+            delete this.syncList[channel_id];
           }
         } catch (e) {}
       }

@@ -31,6 +31,9 @@ text-info
 text-warning
 text-success
 
+toggle-error
+toggle-info
+
 badge-error
 badge-success
 

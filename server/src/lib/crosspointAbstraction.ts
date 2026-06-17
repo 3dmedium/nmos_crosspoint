@@ -49,7 +49,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
 
         this.startWorker();
 
-        
+
 
 
         if(CrosspointAbstraction.instance == null){
@@ -90,7 +90,17 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
             if(id.startsWith("nmos_")){
                 let nmosId = id.slice(5);
                 NmosRegistryConnector.instance.enableFlow(nmosId,disable);
-            } 
+            }
+            resolve({});
+        });
+    }
+
+    enableReceiver(id:string, disable=false){
+        return new Promise((resolve, reject) => {
+            if(id.startsWith("nmos_")){
+                let nmosId = id.slice(5);
+                NmosRegistryConnector.instance.enableReceiver(nmosId, disable);
+            }
             resolve({});
         });
     }
@@ -100,7 +110,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
             if(id.startsWith("nmos_")){
                 let nmosId = id.slice(5);
                 NmosRegistryConnector.instance.setFlowMulticast(nmosId,data);
-            } 
+            }
             resolve({});
         });
     }
@@ -425,10 +435,10 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                     }
                 }
 
-                // TODO handle inactive Sender
+                // TODO, optional enable inactive senders before connection (should use the existing enable Flow api)
 
+                
 
-                    
                 if(dst.id.startsWith("nmos_")){
                     try{
                         let nmosId = dst.id.slice(5);
@@ -455,10 +465,16 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
     }
 
 
-    reconnectOnChangesFromNmos( senderId:string ){
-        if(!this.settings.reconnectOnSdpChanges){
-            return;
-        }
+    /**
+     * Find every receiver currently connected to the given sender and
+     * re-execute the connection. Used whenever the sender's multicast
+     * (or any other SDP-relevant field) changes — without this, receivers
+     * would keep listening to the old destination IP / port.
+     *
+     * Always runs (no settings gate). Caller is responsible for triggering
+     * only when an actual change happened.
+     */
+    public reconnectReceiversOfSender( senderId:string, triggerSource = "unknown"){
         let nmos_senderId = "nmos_"+senderId
         let src:CrosspointFlow = null;
         for(let dev of this.crosspointState.devices){
@@ -471,20 +487,33 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                 }
             }
         }
+        if(!src) return;
 
-        if(src){
-            for(let dev of this.crosspointState.devices){
-                for(let type of Object.keys(dev.receivers)){
-                    for( let flow of dev.receivers[type]){
-                        if(flow.connectedFlow == nmos_senderId){
-                           let dst = flow;
-                           this.executeConnection(src,dst).then(()=>{}).catch(()=>{});
-                           SyncLog.info("crosspoint","Executed reconnection on SDP Changed: " + src.id +" > "+dst.id);
-                        }
+        for(let dev of this.crosspointState.devices){
+            for(let type of Object.keys(dev.receivers)){
+                for( let flow of dev.receivers[type]){
+                    if(flow.connectedFlow == nmos_senderId){
+                       let dst = flow;
+                       this.executeConnection(src,dst).then(()=>{}).catch(()=>{});
+                       SyncLog.log("info", "crosspoint", "Reconnecting receiver " + dst.id + " because sender " + src.id + " transport params changed, trigger source: "+ triggerSource);
                     }
                 }
             }
         }
+    }
+
+    /**
+     * Called when the SDP of a sender changed (detected by manifest re-fetch
+     * in nmosConnector — covers anything: multicast IP, port, channel count,
+     * video format, colorimetry, transfer characteristic, …).
+     *
+     * Gated by `settings.reconnectOnSdpChanges`
+     */
+    reconnectOnChangesFromSdp( senderId:string ){
+        if(!this.settings.reconnectOnSdpChanges){
+            return;
+        }
+        this.reconnectReceiversOfSender(senderId, "sdp");
     }
 
     updateFromNmos(state:any){
@@ -513,8 +542,8 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
         }
     }
 
-    
-    
+
+
 }
 
 
@@ -534,6 +563,13 @@ export interface CrosspointFlowBitrate {
     hint:string
 }
 
+export interface CrosspointFlowLeg {
+    index:number,
+    dstIp:string,
+    dstPort:string|number,
+    srcIp:string
+}
+
 
 export interface CrosspointFlow {
     id:string,
@@ -547,7 +583,9 @@ export interface CrosspointFlow {
     alias:string,
     hidden:boolean,
 
-    connectedFlow:string,
+    connectedFlowId:string,
+    connectedFlowLabel:string,
+    connectedFlowFormat:string,
 
     type:"video" | "audio" | "data" | "mqtt" | "websocket" | "audiochannel" | "unknown",
     format: string,
@@ -556,7 +594,8 @@ export interface CrosspointFlow {
     capLimits:string,
     channelNumber: number,
     sourceNumber: number,
-    bitrate:CrosspointFlowBitrate
+    bitrate:CrosspointFlowBitrate,
+    legs:CrosspointFlowLeg[]
 };
 
 
@@ -593,8 +632,11 @@ export interface CrosspointDevice {
         mqtt: CrosspointFlow[],
         unknown: CrosspointFlow[],
     },
-    
+
+    clockSourceId:string,
+    clockLocked:boolean,
   }
+
 export interface CrosspointState {
     devices: CrosspointDevice[]
 }
@@ -623,6 +665,7 @@ export interface CrosspointShadowDevice {
     num:number,
     order:number,
     name:string,
+    available:boolean,
     senders:  {
         audio: { [name: string]: CrosspointShadowFlow },
         audiochannel: { [name: string]: CrosspointShadowFlow },

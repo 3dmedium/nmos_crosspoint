@@ -30,6 +30,13 @@ export class WebsocketClient {
 
     private subscriptionList = [];
 
+    // Heartbeat — see explainer at the bottom of the constructor.
+    private pingInterval: any = null;
+    private pongPending: boolean = false;
+    private pingIntervalMs = 15000;
+    private pongTimeoutMs  = 30000;
+    private lastPongAt: number = Date.now();
+
     constructor(s: WebSocket, e: any) {
         this.ws = s;
         this.env = e;
@@ -46,9 +53,40 @@ export class WebsocketClient {
                 } catch (e) {}
             }
         });
+
+        // Native RFC 6455 pong frame — the `ws` library emits "pong" whenever
+        // the peer answers a server-issued ping. Used to clear pongPending so
+        // the liveness timer can decide whether to terminate the socket.
+        this.ws.on("pong", () => {
+            this.pongPending = false;
+            this.lastPongAt = Date.now();
+        });
+
         this.ws.on("close", () => {
+            if (this.pingInterval) {
+                clearInterval(this.pingInterval);
+                this.pingInterval = null;
+            }
             WebsocketSyncServer.getInstance().disconnectClient(this);
         });
+
+        // Server-side heartbeat. Every pingIntervalMs we send a native ping
+        // frame; if no pong has arrived within pongTimeoutMs we treat the
+        // connection as dead and terminate() — this surfaces dead clients
+        // (NAT drops, abrupt power-off, etc.) much faster than the OS-level
+        // TCP keepalive (often > 2 hours by default).
+        this.pingInterval = setInterval(() => {
+            try {
+                if (this.ws.readyState !== this.ws.OPEN) return;
+                if (this.pongPending && (Date.now() - this.lastPongAt) > this.pongTimeoutMs) {
+                    try { this.ws.terminate(); } catch (e) {}
+                    return;
+                }
+                this.pongPending = true;
+                this.ws.ping();
+            } catch (e) {}
+        }, this.pingIntervalMs);
+
         try{
             this.ws.send(JSON.stringify({
                 type:"authseed",

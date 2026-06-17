@@ -133,58 +133,58 @@
         uiList = [];
         let count = 0;
         logList.forEach((log)=>{
-            if(filterIds && filterIds.length > 0){
+          if(filterIds && filterIds.length > 0){
                 if(filterIds.includes(log.id+"")){
-                    uiList.push(log)
+                  uiList.push(log)
                 }
                 return;
-            }
+              }
+              
+
+                if(stopScrollId){
+                    if(log.id <= stopScrollId){
+                        // use
+                    }else{
+                        return;
+                    }
+                }
 
 
-            if(stopScrollId){
-                if(log.id <= stopScrollId){
-                    // use
-                }else{
+
+                if(log.severity == "error" && filter.severity.error == false){
                     return;
                 }
-            }
-
-
-
-            if(log.severity == "error" && filter.severity.error == false){
-                return;
-            }
-            if(log.severity == "waring" && filter.severity.waring == false){
-                return;
-            }
-            if(log.severity == "info" && filter.severity.info == false){
-                return;
-            }
-            if(log.severity == "verbose" && filter.severity.verbose == false){
-                return;
-            }
-            if(log.severity == "debug" && filter.severity.debug == false){
-                return;
-            }
-
-
-            if(filter.search != ""){
-                let searchTokens = getSearchTokens(filter.search);
-                let cipFound = tokenSearch(log, searchTokens,["text"] );
-                if(!cipFound){
+                if(log.severity == "waring" && filter.severity.waring == false){
                     return;
                 }
-            }
-
-            if(filter.searchTopic != ""){
-                let searchTokens = getSearchTokens(filter.searchTopic);
-                let cipFound = tokenSearch(log, searchTokens,["topic"] );
-                if(!cipFound){
+                if(log.severity == "info" && filter.severity.info == false){
                     return;
                 }
-            }
+                if(log.severity == "verbose" && filter.severity.verbose == false){
+                    return;
+                }
+                if(log.severity == "debug" && filter.severity.debug == false){
+                    return;
+                }
 
-            uiList.push(log)  
+
+                if(filter.search != ""){
+                  let searchTokens = getSearchTokens(filter.search);
+                  let cipFound = tokenSearch(log, searchTokens,["text"] );
+                  if(!cipFound){
+                    return;
+                  }
+                }
+
+                if(filter.searchTopic != ""){
+                  let searchTokens = getSearchTokens(filter.searchTopic);
+                  let cipFound = tokenSearch(log, searchTokens,["topic"] );
+                  if(!cipFound){
+                    return;
+                  }
+                }
+
+                uiList.push(log)
         })
         console.log(uiList)
     }
@@ -192,9 +192,6 @@
     let lastLogId = 0;
     
     function updateList(){
-
-      console.log(state.lastLogId);
-      console.log(state.logList);
         try{
             if(state.lastLogId < lastLogId){
                 lastLogId = 0;
@@ -217,7 +214,6 @@
             });
             lastLogId = state.lastLogId;
         }catch(e){console.log(e)}
-        console.log(logList);
         doFilter();
     }
 

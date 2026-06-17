@@ -93,7 +93,7 @@
       ServerConnector.unsync("uiconfig");
     });
     onMount(()=>{
-      
+
       uiConfigSync = ServerConnector.sync("uiconfig")
       uiConfigSync.subscribe((obj:any)=>{
         uiConfig = obj;
@@ -269,7 +269,7 @@
         {/if}
         <li>
           <label><span>Autotake</span>
-            <input type="checkbox" class="toggle" bind:checked={autoTake} on:change={toggleAutotake} />
+            <input type="checkbox" class="toggle toggle-info" bind:checked={autoTake} on:change={toggleAutotake} />
           </label>
         </li>
         <li>
