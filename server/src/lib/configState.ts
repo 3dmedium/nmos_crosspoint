@@ -2,7 +2,7 @@ import { SyncObject } from "./SyncServer/syncObject";
 import { SyncLog } from "./syncLog";
 
  export class ConfigState {
-    public syncCrosspoint: SyncObject;
+    public syncCrosspoint: SyncObject|null = null;
     crosspointState: CrosspointState = {sources:[], destinations:[]};
 
     constructor(){

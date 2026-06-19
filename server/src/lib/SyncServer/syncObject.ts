@@ -135,7 +135,7 @@ export class SyncObject {
         this.reading[objectId] = true;
         return true;
     }
-    endReadState(objectId, state = null, forceReset = false) {
+    endReadState(objectId, state:any = null, forceReset = false) {
         if (state != null) {
             if (this.state.hasOwnProperty(objectId) && !forceReset) {
                 this.setState(state, objectId, false);

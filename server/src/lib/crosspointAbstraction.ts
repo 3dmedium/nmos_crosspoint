@@ -87,31 +87,43 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
 
     enableFlow(id:string, disable=false){
         return new Promise((resolve, reject) => {
-            if(id.startsWith("nmos_")){
-                let nmosId = id.slice(5);
-                NmosRegistryConnector.instance.enableFlow(nmosId,disable);
+            if(!NmosRegistryConnector.instance){
+                reject();
+            }else{
+                if(id.startsWith("nmos_")){
+                    let nmosId = id.slice(5);
+                    NmosRegistryConnector.instance.enableFlow(nmosId,disable);
+                }
+                resolve({});
             }
-            resolve({});
         });
     }
 
     enableReceiver(id:string, disable=false){
         return new Promise((resolve, reject) => {
-            if(id.startsWith("nmos_")){
-                let nmosId = id.slice(5);
-                NmosRegistryConnector.instance.enableReceiver(nmosId, disable);
+            if(!NmosRegistryConnector.instance){
+                reject();
+            }else{
+                if(id.startsWith("nmos_")){
+                    let nmosId = id.slice(5);
+                    NmosRegistryConnector.instance.enableReceiver(nmosId, disable);
+                }
+                resolve({});
             }
-            resolve({});
         });
     }
 
     setMulticast(id:string, data:any){
         return new Promise((resolve, reject) => {
-            if(id.startsWith("nmos_")){
-                let nmosId = id.slice(5);
-                NmosRegistryConnector.instance.setFlowMulticast(nmosId,data);
+            if(!NmosRegistryConnector.instance){
+                reject();
+            }else{
+                if(id.startsWith("nmos_")){
+                    let nmosId = id.slice(5);
+                    NmosRegistryConnector.instance.setFlowMulticast(nmosId,data);
+                }
+                resolve({});
             }
-            resolve({});
         });
     }
 
@@ -150,7 +162,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
 
             let preview = true;
             let prepare = false;
-            let list = [];
+            let list:any[] = [];
             if(data.hasOwnProperty("multiple")){
                 list = data.multiple;
             }else{
@@ -168,7 +180,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
             }
 
 
-            let connections = [];
+            let connections:any[] = [];
 
 
             list.forEach((c)=>{
@@ -184,12 +196,12 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                 let dstFlows:any[] = [];
 
                 // Select all source Flows
-                let sourceDevice = null;
+                let sourceDevice:string|null = null;
                 let sourceDeviceOnly = false;
                 let sourceFlowType = "";
-                let sourceFlow = null;
+                let sourceFlow:string|null = null;
                 let sourceParts = source.split(".");
-                let srcDev = null
+                let srcDev:CrosspointDevice|null = null
                 sourceDevice = sourceParts[0]
                 if(sourceParts.length == 2){
                     sourceFlow = sourceParts[1].slice(1);
@@ -211,7 +223,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                 }
 
                 for(let dev of this.crosspointState.devices){
-                    if(dev.num == sourceDevice){
+                    if(dev.num == parseInt(sourceDevice)){
                         srcDev = dev;
                         for(let type in dev.senders){
                             if(type == sourceFlowType || sourceDeviceOnly){
@@ -227,12 +239,12 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
 
 
                 // Select all destination Flows
-                let destinationDevice = null;
+                let destinationDevice:string|null = null;
                 let destinationDeviceOnly = false;
                 let destinationFlowType = "";
-                let destinationFlow = null;
+                let destinationFlow:string|null = null;
                 let destinationParts = destination.split(".");
-                let dstDev = null;
+                let dstDev:CrosspointDevice|null = null;
                 destinationDevice = destinationParts[0]
                 if(destinationParts.length == 2){
                     destinationFlow = destinationParts[1].slice(1);
@@ -254,7 +266,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                 }
 
                 for(let dev of this.crosspointState.devices){
-                    if(dev.num == destinationDevice){
+                    if(dev.num == parseInt(destinationDevice)){
 
                         dstDev = dev;
                         for(let type in dev.receivers){
@@ -282,10 +294,10 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                         //      Capabilities
                         //      Lowest NUM
 
-                        let usedSources = [];
+                        let usedSources:any[] = [];
 
                         for(let dstFlow of dstFlows){
-                            let connection = {src:null,srcDev:srcDev, dst:dstFlow,dstDev:dstDev}
+                            let connection:any = {src:null,srcDev:srcDev, dst:dstFlow,dstDev:dstDev}
 
                             if(disconnect){
                                 // src : null
@@ -338,21 +350,21 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
 
 
             if(preview){
-                let connectionPreviews = [];
+                let connectionPreviews:any[] = [];
                 connections.forEach((c)=>{
                     connectionPreviews.push({src:(c.src?c.src.id:null),dst:c.dst.id, status:"preview"});
                 });
                 resolve({connections:connectionPreviews});
             }else if(prepare){
-                let connectionPreviews = [];
+                let connectionPreviews:any[] = [];
                 connections.forEach((c)=>{
                     connectionPreviews.push({src:c.src,dst:c.dst,srcDev:(c.src ? c.srcDev : null), dstDev:c.dstDev, status:"prepare"});
                 });
                 resolve({connections:connectionPreviews});
             }else{
-                let connectionPromises = [];
-                let disconnectPromises = [];
-                let connectionResponses = [];
+                let connectionPromises:Promise<any>[] = [];
+                let disconnectPromises:Promise<any>[] = [];
+                let connectionResponses:any[] = [];
 
                 // Connects
                 connections.forEach((c)=>{
@@ -411,16 +423,27 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
     executeConnection(src:CrosspointFlow,dst:CrosspointFlow){
         return new Promise(async(resolve, reject) => {
             if(dst){
-                let senderInfo:CrosspointConnectionSenderInfo|null = null;
+                let senderInfo:CrosspointConnectionSenderInfo = {
+                        senderId: "",
+                        interfaces:[],
+                        manifestFile:"",
+                        active:false,
+                        error:"",
+                        transport:""
+                    };
                 if(src){
                     SyncLog.log("info", "connect_crosspoint", "Make Connect: Receiver "+ dst.id + "    <   Sender " + src.id)
                     try{
                         if(src.id.startsWith("nmos_")){
                             let nmosId = src.id.slice(5);
-                            senderInfo = await NmosRegistryConnector.instance.connectionGetSenderInfo(nmosId);
+                            if(NmosRegistryConnector.instance){
+                                senderInfo = await NmosRegistryConnector.instance.connectionGetSenderInfo(nmosId);
+                            }else{
+                                reject({src:src,dst:dst,status:"crosspoint not ready"});
+                            }
                         }
                         
-                    }catch(e){
+                    }catch(e:any){
                         reject({src:src,dst:dst,status:"failed sender info"});
                     }
                 }else{
@@ -442,13 +465,17 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
                 if(dst.id.startsWith("nmos_")){
                     try{
                         let nmosId = dst.id.slice(5);
-                        let log = await NmosRegistryConnector.instance.makeConnection(nmosId,senderInfo);
-                        if(senderInfo.senderId == "disconnect"){
-                            resolve({src:src,dst:dst,status:"ok_dis", detail:{message:"Success",log:""+log}});
+                        if(NmosRegistryConnector.instance){    
+                            let log = await NmosRegistryConnector.instance.makeConnection(nmosId,senderInfo);
+                            if(senderInfo.senderId == "disconnect"){
+                                resolve({src:src,dst:dst,status:"ok_dis", detail:{message:"Success",log:""+log}});
+                            }else{
+                                resolve({src:src,dst:dst,status:"ok", detail:{message:"Success",log:""+log}});
+                            }
                         }else{
-                            resolve({src:src,dst:dst,status:"ok", detail:{message:"Success",log:""+log}});
+                            reject({src:src,dst:dst,status:"crosspoint not ready"});
                         }
-                    }catch(e){
+                    }catch(e:any){
                         if(e instanceof LoggedError){
                             reject({src:src,dst:dst,status:"failed", detail:{message:e.message, log:e.logId}});
                         }else{
@@ -476,7 +503,7 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
      */
     public reconnectReceiversOfSender( senderId:string, triggerSource = "unknown"){
         let nmos_senderId = "nmos_"+senderId
-        let src:CrosspointFlow = null;
+        let src:CrosspointFlow|null = null;
         for(let dev of this.crosspointState.devices){
             for(let type of Object.keys(dev.senders)){
                 for( let flow of dev.senders[type]){
@@ -538,7 +565,9 @@ const md5 = data => crypto.createHash('md5').update(data).digest("hex")
         }
 
         if(data.hasOwnProperty("nmosSetMulticast")){
-            NmosRegistryConnector.instance.setFlowMulticast(data.nmosSetMulticast.nmosId,data.nmosSetMulticast.multicast);
+            if(NmosRegistryConnector.instance){
+                NmosRegistryConnector.instance.setFlowMulticast(data.nmosSetMulticast.nmosId,data.nmosSetMulticast.multicast);
+            }
         }
     }
 

@@ -2,8 +2,9 @@
     import ServerConnector from "../lib/ServerConnector/ServerConnectorService"
     import type { Subject } from "rxjs";
     import { onDestroy, onMount } from "svelte";
+    import PrettyJson from "../lib/PrettyJson.svelte";
 
-    import JsonTree from 'svelte-json-tree';
+    //import JsonTree from 'svelte-json-tree';
     
 
 
@@ -41,7 +42,7 @@
       </ul>
   </div>
   <div style="flex-grow:2;" class="setup-container">
-    <JsonTree value={state} shouldShowPreview={true} defaultExpandedLevel={2}
+    <!--<JsonTree value={state} shouldShowPreview={true} defaultExpandedLevel={2}
         --json-tree-property-color="#a6e22e"
         --json-tree-string-color="#f25a00"
         --json-tree-symbol-color="#66d9ef"
@@ -59,5 +60,7 @@
         --json-tree-li-line-height="1.5"
         --json-tree-font-size="16px"
         --json-tree-font-family="monospace"
-    /></div>
+    />-->
+    <PrettyJson json={state}></PrettyJson>
+    </div>
   </div>

@@ -3,7 +3,7 @@
     Copyright (C) 2021 Johannes Grieb
 */
 
-import * as WebSocket from "ws";
+import WebSocket from "ws";
 import axios from "axios";
 import { SyncObject } from "./SyncServer/syncObject";
 import { Subject } from "rxjs";
@@ -35,7 +35,9 @@ export class NmosRegistryConnector {
         this.hookCallbackList[type].push(callback);
         if(NmosRegistryConnector.instance){
             Object.keys(NmosRegistryConnector.instance.nmosState[type]).forEach((item)=>{
-                callback(item, NmosRegistryConnector.instance.nmosState[type][item]);
+                if(NmosRegistryConnector.instance){
+                    callback(item, NmosRegistryConnector.instance.nmosState[type][item]);
+                }
             });
         }
     }
@@ -44,7 +46,7 @@ export class NmosRegistryConnector {
         this.modifierCallbackList[type].push(callback);
     }
 
-    static hookCallbackList = {
+    static hookCallbackList:any = {
         "nodes" : [],
         "devices" : [],
         "sources" : [],
@@ -54,7 +56,7 @@ export class NmosRegistryConnector {
         "sendersManifestDetail":[]
     }
 
-    static modifierCallbackList = {
+    static modifierCallbackList:any = {
         "nodes" : [],
         "devices" : [],
         "sources" : [],
@@ -200,7 +202,7 @@ export class NmosRegistryConnector {
         this.getSubscription(url, "/flows");
     }
 
-    private mdnsQueryInterval = null;
+    private mdnsQueryInterval:NodeJS.Timeout|null = null;
     private mdnsBrowser: any = null;
     private registryVersionList = ["v1.3","v1.2"];
     private connectVersionList = ["v1.1", "v1.0"];
@@ -227,6 +229,8 @@ export class NmosRegistryConnector {
             this.updateCrosspointTimer = null;
             if(CrosspointAbstraction.instance){
                 CrosspointAbstraction.instance.updateFromNmos(this.nmosState);
+            }
+            if(Topology.instance){
                 Topology.instance.updateDevicesFromNmos(this.nmosState);
             }
         },100);
@@ -243,7 +247,7 @@ export class NmosRegistryConnector {
         channelmapping:{},
         sendersManifestDetail :{}
     };
-    private connections = {};
+    private connections:any = {};
 
 
     private getSubscription(nmosRegistryUrl: string, resource: string) {
@@ -481,7 +485,7 @@ export class NmosRegistryConnector {
                     cmLoaded = true;
                     
 
-                }catch(e){
+                }catch(e:any){
                     //console.log(e);
                 }
             }
@@ -587,16 +591,21 @@ export class NmosRegistryConnector {
                 // add or update element
                 if (typeof g.post == "object") {
 
-                    let active_href = [];
+                    let active_href:string[] = [];
                     let senderId = "";
-                    let sender = null;
-                    let device = null;
+                    let sender:any|null = null;
+                    let device:any|null = null;
 
 
                     try{
                         senderId = g.path;
                         sender = g.post;
-                        device = this.nmosState.devices[sender.device_id];
+                        if(sender && sender.device_id ){
+                            device = this.nmosState.devices[sender.device_id];
+                        }else{
+                            SyncLog.log("warn", "NMOS", "Can not get active configuration of sender, device ID not provided")
+                            return;
+                        }
 
                         // Accept BOTH supported IS-05 control versions.
                         // Devices that advertise v1.1 only (e.g. QSC Core)
@@ -635,7 +644,7 @@ export class NmosRegistryConnector {
                             let response = await axios.get(href);
                             this.nmosState.senderActiveData[senderId] = response.data;
                             return;
-                        }catch(e){
+                        }catch(e:any){
                             SyncLog.log("warn", "NMOS", "Can not get active configuration of sender:",{error: e.message, href : href});
                         }
                     }
@@ -658,7 +667,7 @@ export class NmosRegistryConnector {
     }
 
     updateSyncConnectionState() {
-        let list = [];
+        let list:any[] = [];
         this.nmosRegistryList.forEach((registry) => {
             let entry:any = structuredClone(registry);
             //let entry = JSON.parse(JSON.stringify(registry));
@@ -701,7 +710,9 @@ export class NmosRegistryConnector {
 
 
     reconnectOnChangesFromSdp(senderId:string){
-        CrosspointAbstraction.instance.reconnectOnChangesFromSdp(senderId);
+        if(CrosspointAbstraction.instance){
+            CrosspointAbstraction.instance.reconnectOnChangesFromSdp(senderId);
+        }
     }
 
     async connectionGetSenderInfo(senderId:string){
@@ -728,7 +739,7 @@ export class NmosRegistryConnector {
             device = this.nmosState.devices[deviceId];
             nodeId = device.node_id;
             node = this.nmosState.nodes[nodeId];
-        }catch(e){
+        }catch(e:any){
             info.error = "Sender not available in NMOS";
             return info;
         }
@@ -743,7 +754,7 @@ export class NmosRegistryConnector {
             try{
                 let sdp = await axios.get(sender.manifest_href)
                 info.manifestFile = sdp.data;
-            }catch(e){
+            }catch(e:any){
                 info.error = "Can not load Manifest from sender: " + e.code;
                 return info;
             }
@@ -806,12 +817,12 @@ export class NmosRegistryConnector {
             device = this.nmosState.devices[deviceId];
             nodeId = device.node_id;
             node = this.nmosState.nodes[nodeId];
-        }catch(e){
+        }catch(e:any){
             SyncLog.log("warning", "NMOS Connect", "Receiver with ID: "+receiverId+" is not available in NMOS");
             throw new Error("NMOS: Receiver not available. (Offline?)");
         }
 
-        let interfaces = [];
+        let interfaces:any[] = []; // TODO type for interface!
         receiver.interface_bindings.forEach((name:any)=>{
             node.interfaces.forEach((inter:any)=>{
                 if(inter.name == name){
@@ -853,7 +864,7 @@ export class NmosRegistryConnector {
                         return { multicast_ip: destIp, destination_port: port, source_ip: srcIp };
                     });
                 }
-            }catch(e){
+            }catch(e:any){
                 SyncLog.log("warning", "NMOS Connect", "Could not parse SDP for transport_params: " + (e?.message || e));
             }
         }
@@ -908,7 +919,7 @@ export class NmosRegistryConnector {
 
 
         let versionFound = false;
-        let controlHrefs = [];
+        let controlHrefs:any[] = [];
         // TODO, make configurable
         let controlTypes = [{type:"urn:x-nmos:control:sr-ctrl/v1.1",version:"v1.1"}, {type:"urn:x-nmos:control:sr-ctrl/v1.0",version:"v1.0"}]
 
@@ -940,7 +951,7 @@ export class NmosRegistryConnector {
             try{
                 let result = await axios.patch(patchHref, patch, {timeout:30000});
                 return SyncLog.log("success", "nmos_connect", "Successfully patched: "+receiverId, {href:patchHref, data:patch})
-            }catch(e){
+            }catch(e:any){
                 if (axios.isAxiosError(e)) {
                     if(e.code == "ETIMEDOUT"){
                         // NEXT
@@ -948,8 +959,8 @@ export class NmosRegistryConnector {
                     }else{
                         // TODO....
                         if(e.code == "ERR_BAD_REQUEST"){
-                            let id = SyncLog.log("error", "nmos_connect", "Receiver "+receiverId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response.data,});
-                            throw new LoggedError("Patch failed: "+e.response.data.error + " / " +e.response.data.debug , id);
+                            let id = SyncLog.log("error", "nmos_connect", "Receiver "+receiverId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e?.response?.data,});
+                            throw new LoggedError("Patch failed: "+e?.response?.data?.error + " / " +e?.response?.data?.debug , id);
                         }
                         let id = SyncLog.log("error", "nmos_connect", "Receiver "+receiverId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
                         throw new LoggedError("Receiver returned Error: "+e.code, id);
@@ -970,7 +981,7 @@ export class NmosRegistryConnector {
 
         try{
             let versionFound = false;
-            let controlHrefs = [];
+            let controlHrefs:any[] = [];
 
             let sender = this.nmosState.senders[senderId];
             let device = this.nmosState.devices[sender.device_id];
@@ -1026,7 +1037,7 @@ export class NmosRegistryConnector {
                     await axios.patch(patchHref, patch, {timeout:15000});
                     SyncLog.log("success", "nmos", "Successfully "+ (disable?"disabled":"enabled") + ": "+senderId, {href:patchHref, data:patch})
                     return;
-                }catch(e){
+                }catch(e:any){
                     if (axios.isAxiosError(e)) {
                         if(e.code == "ETIMEDOUT"){
                             // NEXT
@@ -1045,7 +1056,7 @@ export class NmosRegistryConnector {
                     }
                 }
             }
-        }catch(e){
+        }catch(e:any){
 
         }
 
@@ -1126,7 +1137,7 @@ export class NmosRegistryConnector {
 
         try{
             let versionFound = false;
-            let controlHrefs = [];
+            let controlHrefs:any[] = []; // TODO get the right control HREF is used multiple times and can be merged into a general function
 
             let sender = this.nmosState.senders[senderId];
             let device = this.nmosState.devices[sender.device_id];
@@ -1260,7 +1271,7 @@ export class NmosRegistryConnector {
                     // TODO optional: force follow of receivers on changed multicasts
 
                     return;
-                }catch(e){
+                }catch(e:any){
                     if (axios.isAxiosError(e)) {
                         if(e.code == "ETIMEDOUT"){
                             // NEXT
@@ -1268,7 +1279,7 @@ export class NmosRegistryConnector {
                         }else{
                             // TODO....
                             if(e.code == "ERR_BAD_REQUEST"){
-                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e.response.data,});
+                                SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, error:e?.response?.data,});
                             }else{
                                 SyncLog.log("error", "nmos", "Sender "+senderId+" returned Error: "+e.code,{controlHrefs,failedControl:patchHref,patch, message:e.message});
                             }
@@ -1279,7 +1290,7 @@ export class NmosRegistryConnector {
                     }
                 }
             }
-        }catch(e){
+        }catch(e:any){
 
         }
 
@@ -1288,7 +1299,7 @@ export class NmosRegistryConnector {
 
     private getOne(hrefList: string[]) {
         return new Promise((resolve, reject) => {
-            let promises = [];
+            let promises:Promise<any>[] = [];
             hrefList.forEach((href) => {
                 promises.push(axios.get(href));
                 axios.get(href).then(response=>{

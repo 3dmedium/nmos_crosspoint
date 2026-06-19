@@ -71,7 +71,7 @@ export default class MediaDevRiedelEmbrionix {
                 fs.mkdirSync("./state/mediadev_riedelembrionix");
                 console.log("Folder created: ./state/mediadev_riedelembrionix");
             }
-        }catch(e){
+        }catch(e:any){
             console.error("Error while creating Folder: ./state/mediadev_riedelembrionix");
         }
 
@@ -87,7 +87,7 @@ export default class MediaDevRiedelEmbrionix {
         this.syncList = new SyncObject("mediadevriedelembrionix");
         this.syncList.setState(this.state);
         let server = WebsocketSyncServer.getInstance();
-        server.addSyncObject("mediadevriedelembrionix","global",this.syncList);
+        server?.addSyncObject("mediadevriedelembrionix","global",this.syncList);  // TODO log critical
 
         NmosRegistryConnector.registerModifier("nodes", (id,data)=>{
             try{
@@ -143,7 +143,7 @@ export default class MediaDevRiedelEmbrionix {
 
 
     updateDevice(nmosData:any){
-        let ip = []
+        let ip:any[] = []
         nmosData.api.endpoints.forEach((e)=>{
             ip.push(e.host);
         })
@@ -193,7 +193,7 @@ export default class MediaDevRiedelEmbrionix {
                 emx.error = false;
 
                 this.state.devices[id] = emx;
-            }catch(e){
+            }catch(e:any){
                 this.state.devices[id] = true;
                 SyncLog.error("Embrionix", "failed to load data on: " + JSON.stringify(this.state.devices[id].ip) +" Message: "+ e.message)
             }
@@ -211,7 +211,7 @@ export default class MediaDevRiedelEmbrionix {
                 })
                 this.state.devices[id] = emx;
 
-            }catch(e){
+            }catch(e:any){
                 SyncLog.error("Embrionix", "failed to load firmware on: " + JSON.stringify(this.state.devices[id].ip) +" Message: "+ e.message)
             }
         }
@@ -230,7 +230,7 @@ export default class MediaDevRiedelEmbrionix {
                 })
                 this.state.devices[id] = emx;
 
-            }catch(e){
+            }catch(e:any){
                 SyncLog.error("Embrionix", "failed to load license on: " + JSON.stringify(this.state.devices[id].ip) +" Message: "+ e.message)
             }
 
@@ -250,7 +250,7 @@ export default class MediaDevRiedelEmbrionix {
         this.quickStateInternal.count = 0;
         this.quickStateInternal.error = 0;
 
-        Object.values(this.state.devices).forEach((emx:EMX_Device)=>{
+        Object.values(this.state.devices).forEach((emx:any)=>{
             this.quickStateInternal.count ++;
             if(emx.error){
                 this.quickStateInternal.error ++;
@@ -290,7 +290,7 @@ export default class MediaDevRiedelEmbrionix {
                 result = await axios.post(url, data, { });
             }
             return result.data;
-        }catch(e){ 
+        }catch(e:any){ 
             SyncLog.log("error","Embrionix", "Can not access data on: "+ url + " Message: "+ e.message);        
         }
     }

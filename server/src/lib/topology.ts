@@ -38,7 +38,7 @@ const fs = require("fs");
         })
         this.updateInfrastructure();
 
-        WebsocketSyncServer.getInstance().addSyncObject("topology","global",this.syncTopology);
+        WebsocketSyncServer.getInstance()?.addSyncObject("topology","global",this.syncTopology); // TODO log critical!
     }
 
 
@@ -81,7 +81,9 @@ const fs = require("fs");
     updateInfrastructure(){
         this.topologyState.infrastructure = [];
         this.abstractions.forEach((a)=>{
-            this.topologyState.infrastructure.push(a.device)
+            if(a.device){
+                this.topologyState.infrastructure.push(a.device)
+            }
         })
         this.syncTopology.setState(this.topologyState);
     }

@@ -3,7 +3,7 @@
       import type { Subject } from "rxjs";
       import { onDestroy, onMount } from "svelte";
 
-      import JsonTree from 'svelte-json-tree';
+      import JsonTree from '@sveltejs/svelte-json-tree';
   
     let state:any = {};
   

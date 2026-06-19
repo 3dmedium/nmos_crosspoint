@@ -59,7 +59,7 @@ export default class MediaDevImagineSnp {
         this.syncList = new SyncObject("mediadevimaginesnp");
         this.syncList.setState(this.state);
         let server = WebsocketSyncServer.getInstance();
-        server.addSyncObject("mediadevimaginesnp","global",this.syncList);
+        server?.addSyncObject("mediadevimaginesnp","global",this.syncList);  // TODO log critical
 
 
         NmosRegistryConnector.registerModifier("receivers", (id,data)=>{

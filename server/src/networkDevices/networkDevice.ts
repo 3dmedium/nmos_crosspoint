@@ -2,7 +2,7 @@ import { NetworkInfrastructureConnector } from "./networkInfrastructureConnector
 
 export class NetworkInfrastructureAbstrraction {
     settings:NetworkAuth;
-    device:NetworkInfrastructure;
+    device:NetworkInfrastructure|null = null;
 
     updateCallback:any = null;
 
@@ -14,8 +14,10 @@ export class NetworkInfrastructureAbstrraction {
         try{
             let loaded = require("./"+this.settings.type);
             this.connector = new loaded.NIC_MOD(opt, (dev)=>{this.changed(dev)});
-            this.connector.changed = (dev)=>{this.changed(dev)  ;};
-        }catch(e){
+            if(this.connector){
+                this.connector.changed = (dev)=>{this.changed(dev)  ;};
+            }
+        }catch(e:any){
             // TODO Logging
             //console.log(e)
         }
@@ -72,5 +74,5 @@ export interface NetworkInterface {
     mac:string,
     type:"rj45"|"sfp"|"qsfp"|"qsfp-split",
     maxspeed:number,
-    attached:{device:NetworkDevice,port:NetworkInterface},
+    attached:{device:NetworkDevice,port:NetworkInterface}|null,
 }

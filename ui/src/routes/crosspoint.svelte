@@ -650,7 +650,7 @@
       }
 
       if(src && dst){
-        if(src.id == dst.connectedFlow){
+        if(src.id == dst.connectedFlowId){
           return "active"
         }
       }else{
@@ -666,7 +666,7 @@
       return "";
     }
 
-    function gotoLog(log:string){
+    function gotoLog(log:string){   // TODO, fix click on feedback does not work
       log = log.slice(5);
       let params = new URLSearchParams({filterIds: log});
       document.location.href = "/logging?" + params.toString();

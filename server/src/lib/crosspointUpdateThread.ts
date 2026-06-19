@@ -58,7 +58,7 @@ class CrosspointUpdateThread{
                 }));
                 console.log("Created folder: ./state");
             }
-        }catch(e){
+        }catch(e:any){
             parentPort.postMessage(JSON.stringify({
                 log:{severity:"critical", topic:"Crosspoint Settings", text:"Can not create folder: ./state ..." + e, raw:null}
             }));
@@ -162,7 +162,7 @@ class CrosspointUpdateThread{
 
             try{
                 fs.writeFileSync("./state/alias.json", JSON.stringify(this.crosspointAlias));
-            }catch(e){
+            }catch(e:any){
                 console.error("Error writing to file: ./state/alias.json");
             }
 
@@ -204,7 +204,7 @@ class CrosspointUpdateThread{
 
             try{
                 fs.writeFileSync("./state/hidden.json", JSON.stringify(this.crosspointHidden));
-            }catch(e){
+            }catch(e:any){
                 console.error("Error writing to file: ./state/hidden.json");
             }
 
@@ -393,7 +393,7 @@ class CrosspointUpdateThread{
             }));
             try{
                 fs.writeFileSync("./state/crosspoint.json", JSON.stringify(this.crosspointShadow));
-            }catch(e){
+            }catch(e:any){
                 console.error("Error writing to file: ./state/crosspoint.json");
             }
         }
@@ -428,7 +428,7 @@ class CrosspointUpdateThread{
             // NMOS Senders
 
             // alphabetical sorting....
-            let list = [];
+            let list:any[] = [];
             for (let s of Object.values(this.nmosState.senders)) {
                 list.push(s)
             };
@@ -747,7 +747,7 @@ class CrosspointUpdateThread{
             }));
             try{
                 fs.writeFileSync("./state/crosspoint.json", JSON.stringify(this.crosspointShadow));
-            }catch(e){
+            }catch(e:any){
                 console.error("Error writing to file: ./state/crosspoint.json");
             }
         }
@@ -1283,7 +1283,7 @@ class CrosspointUpdateThread{
             for(let senderId in this.nmosState.senderActiveData){
                 let nmosId = "nmos_"+senderId
                 let activeData = this.nmosState.senderActiveData[senderId];
-                let multicast = [];
+                let multicast:any[] = [];
 
                 // TODO test errors between SDP and Active...
 
@@ -1453,14 +1453,14 @@ class CrosspointUpdateThread{
 
 
 
-        }catch(e){
+        }catch(e:any){
             console.error(e)
         }
 
         if(storeChanged){
             try{
                 fs.writeFileSync("./state/multicast.json", JSON.stringify(this.storedMulticast));
-            }catch(e){
+            }catch(e:any){
                 console.error("Error writing to file: ./state/multicast.json");
             }
         }
@@ -1536,7 +1536,7 @@ class CrosspointUpdateThread{
             return give;
 
 
-        }catch(e){
+        }catch(e:any){
             console.log(e)
         }
 

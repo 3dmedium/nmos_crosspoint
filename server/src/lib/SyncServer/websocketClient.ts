@@ -67,7 +67,7 @@ export class WebsocketClient {
                 clearInterval(this.pingInterval);
                 this.pingInterval = null;
             }
-            WebsocketSyncServer.getInstance().disconnectClient(this);
+            WebsocketSyncServer.getInstance()?.disconnectClient(this);
         });
 
         // Server-side heartbeat. Every pingIntervalMs we send a native ping
@@ -134,8 +134,8 @@ export class WebsocketClient {
     }
 
     processRequest(message) {
-        WebsocketSyncServer.getInstance()
-            .request(message, this)
+        let inst = WebsocketSyncServer.getInstance();
+        inst?.request(message, this)
             .then((data) => {
                 this.send(data);
             })
@@ -151,7 +151,7 @@ export class WebsocketClient {
                 if (typeof message.objectId === "string" || typeof message.objectId === "number") {
                     objectId = message.objectId;
                 }
-                WebsocketSyncServer.getInstance().subscribeSyncObject(message.channel, this, objectId);
+                WebsocketSyncServer.getInstance()?.subscribeSyncObject(message.channel, this, objectId);
             }
         } else if (message.type === "unsync") {
             if (typeof message.channel === "string") {
@@ -159,15 +159,15 @@ export class WebsocketClient {
                 if (typeof message.objectId === "string" || typeof message.objectId === "number") {
                     objectId = message.objectId;
                 }
-                WebsocketSyncServer.getInstance().unsubscribeSyncObject(message.channel, this, objectId);
+                WebsocketSyncServer.getInstance()?.unsubscribeSyncObject(message.channel, this, objectId);
             }
         }
     }
 
     
     processAuth(message:any){
-        if(WebsocketSyncServer.getInstance().authData.users.hasOwnProperty(message.user)){
-            let proof = WebsocketSyncServer.getInstance().authData.users[message.user].password + this.authSeed
+        if(WebsocketSyncServer.getInstance()?.authData.users.hasOwnProperty(message.user)){
+            let proof = WebsocketSyncServer.getInstance()?.authData.users[message.user].password + this.authSeed
             proof = Crypto.createHash('sha256').update(proof).digest('hex');
 
             if(proof == message.password){

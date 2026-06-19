@@ -9,6 +9,16 @@ import { SyncObject } from "./SyncServer/syncObject";
 import { Subject } from "rxjs";
 import { WebsocketClient } from "./SyncServer/websocketClient";
 
+
+export interface LogMessage {
+    id:number,
+    time: number,
+    severity:string,
+    text:string,
+    topic:string,
+    raw:string,
+}
+
 export class SyncLog extends SyncObject {
     static instance: SyncLog;
 
@@ -75,7 +85,7 @@ export class SyncLog extends SyncObject {
 
     limitHistory = 200;
     limitHistoryMem = 20000;
-    logHistory = [];
+    logHistory:LogMessage[] = [];
     lastLogId = 0;
     
     async getSearch(search:any){
@@ -94,7 +104,7 @@ export class SyncLog extends SyncObject {
     }
     pushMessage(time:number, severity: string, topic: string, text: string,  raw: any) {
         let id = this.lastLogId++;
-            let message = {
+            let message:LogMessage = {
                 id:id,
                 time: time,
                 severity,

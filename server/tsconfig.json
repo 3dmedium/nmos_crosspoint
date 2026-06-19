@@ -5,6 +5,7 @@
         "outDir": "./dist",
         "rootDir": "./src",
         "sourceMap": true,
-        "lib": ["esnext"]
+        "lib": ["esnext"],
+        "noImplicitAny": false
     }
 }

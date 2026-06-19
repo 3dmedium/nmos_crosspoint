@@ -44,17 +44,17 @@ export class WebsocketSyncServer {
         this.authData = data;
     }
 
-    private static instance: WebsocketSyncServer;
+    private static instance: WebsocketSyncServer|null = null;
 
     private server: any;
 
-    public static getInstance(): WebsocketSyncServer {
+    public static getInstance(): WebsocketSyncServer|null {
         if (!WebsocketSyncServer.instance) {
             return null;
         }
         return WebsocketSyncServer.instance;
     }
-    private wss: WebSocket.Server = null;
+    private wss: WebSocket.Server|null = null;
 
     // TODO client List Cleanup on closed
     private clientList: WebsocketClient[] = [];
@@ -168,7 +168,7 @@ export class WebsocketSyncServer {
 
     private constructor(address:string, port:number, beforeCatchAll?: (app:any)=>void) {
         this.wss = new WebSocket.Server({ noServer: true });
-        this.wss.on("connection", (ws) => {
+        this.wss.on("connection", (ws:WebSocket) => {
 
             const client = new WebsocketClient(ws, {});
             this.clientList.push(client);
@@ -176,11 +176,7 @@ export class WebsocketSyncServer {
         });
 
         this.server = express();
-        this.server.use("/*", (req, res, next) => {
-            //res.setHeader("Cache-Control", "must-revalidate");
-            //res.setHeader("service-worker-allowed", "/");
-            next();
-        });
+
         this.server.use("/assets/connectionWorker.js", (req, res, next) => {
             res.setHeader("service-worker-allowed", "/");
             next();
@@ -193,7 +189,7 @@ export class WebsocketSyncServer {
                 SyncLog.log("error", "Server", "beforeCatchAll callback failed: " + (e?.message || e));
             }
         }
-        this.server.all("/*", function (req, res, next) {
+        this.server.all("/*fallback", function (req, res, next) {
             res.sendFile(path.resolve("./") + "/public/index.html");
         });
 
@@ -204,8 +200,8 @@ export class WebsocketSyncServer {
         });
 
         ls.on("upgrade", (request, socket, head) => {
-            this.wss.handleUpgrade(request, socket, head, (socket) => {
-                this.wss.emit("connection", socket, request);
+            this.wss?.handleUpgrade(request, socket, head, (socket) => {
+                this.wss?.emit("connection", socket, request);
             });
         });
     }
@@ -216,7 +212,7 @@ export class WebsocketSyncServer {
         try{
             let permis = this.authData.permissions[required];
 
-            let groups = [];
+            let groups:any[] = [];
             if(user!="__noAuth"){
                 groups = this.authData.users[user].groups;
             }
@@ -238,7 +234,7 @@ export class WebsocketSyncServer {
             }
             
         
-        }catch(e){
+        }catch(e:any){
             console.log(e)
         }
         return false;

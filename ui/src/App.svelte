@@ -1,33 +1,31 @@
 <script lang="ts">
 
-  import { Router, Link, Route } from "svelte-routing";
-
   
-  import { onDestroy, onMount } from 'svelte';
+    import { onDestroy, onMount } from 'svelte';
 
-  import ServerConnector from "./lib/ServerConnector/ServerConnectorService";
-  import OverlayMenuService from "./lib/OverlayMenu/OverlayMenuService";
+    import ServerConnector from "./lib/ServerConnector/ServerConnectorService";
+    import OverlayMenuService from "./lib/OverlayMenu/OverlayMenuService";
 
-  import { Icon, Squares2x2, Share, ListBullet, WrenchScrewdriver, ServerStack, LockOpen, LockClosed  } from "svelte-hero-icons";
+    import { Icon, Squares2x2, Share, ListBullet, WrenchScrewdriver, ServerStack, LockOpen, LockClosed  } from "svelte-hero-icons";
 
 
-  import Crosspoint from './routes/crosspoint.svelte';
-  import Topology from './routes/topology.svelte';
-  import Details from './routes/details.svelte';
-  import Setup from './routes/setup.svelte';
-  import Logging from './routes/logging.svelte';
+    import Crosspoint from './routes/crosspoint.svelte';
+    import Topology from './routes/topology.svelte';
+    import Details from './routes/details.svelte';
+    import Setup from './routes/setup.svelte';
+    import Logging from './routes/logging.svelte';
 
-  import Debug from './routes/debug.svelte';
-  import Devices from './routes/devices.svelte';
-  import Matroxcip from './routes/mediadevices/matroxcip.svelte';
-  import Riedelembrionix from './routes/mediadevices/riedelembrionix.svelte';
+    import Debug from './routes/debug.svelte';
+    import Devices from './routes/devices.svelte';
+    import Matroxcip from './routes/mediadevices/matroxcip.svelte';
+    import Riedelembrionix from './routes/mediadevices/riedelembrionix.svelte';
     import OverlayMenu from "./lib/OverlayMenu/OverlayMenu.svelte";
     import ServerConnectorOverlay from "./lib/ServerConnector/ServerConnectorOverlay.svelte";
     import type { Subject } from "rxjs";
 
     let menu = OverlayMenuService;
 
-  let routes = [
+    let routes = [
         {label:"Crosspoint", icon:Squares2x2, link:"/crosspoint"},
         
         
@@ -39,7 +37,7 @@
         {label:"Setup",  icon:WrenchScrewdriver, link:"/setup"},
     ];
 
-    let current_url = "/";
+    let current_url = "/init";
     let update_url=()=>{
       setTimeout(()=>{
         current_url = window.location.pathname;
@@ -172,32 +170,58 @@
       return url == route
     }
 
+    function set_url(url:string){
+        window.history.replaceState(null, document.title, url);
+        current_url = url;
+
+    }
+
     
 
 </script>
 
-<Router>
-  <div class="browser-layout">
+
+<div class="browser-layout">
 
     <div class="browser-work-area">
-    <Route path="/"          ><Crosspoint bind:this="{crosspointComponent}" autoTake={autoTake} on:updateGlobalTake={(e)=>{updateGlobalTake(e)}}></Crosspoint></Route>
-    <Route path="/crosspoint"><Crosspoint bind:this="{crosspointComponent}" autoTake={autoTake} on:updateGlobalTake={(e)=>{updateGlobalTake(e)}}></Crosspoint></Route>
+        {#if current_url == "/" }
+        <Crosspoint bind:this="{crosspointComponent}" autoTake={autoTake} on:updateGlobalTake={(e)=>{updateGlobalTake(e)}}></Crosspoint>
+        
+        {:else if current_url == "/crosspoint"}
+        <Crosspoint bind:this="{crosspointComponent}" autoTake={autoTake} on:updateGlobalTake={(e)=>{updateGlobalTake(e)}}></Crosspoint>
+        
+        {:else if current_url == "/details"}
+        <Details></Details>
+        
+        {:else if current_url == "/topology"}
+        <Topology></Topology>
+        
+        
+        {:else if current_url == "/debug"}
+        <Debug></Debug>
+        
+        {:else if current_url == "/logging"}
+        <Logging></Logging>
+        
+        {:else if current_url == "/mediadevices/matroxcip"}
+        <Matroxcip></Matroxcip>
+        
+        {:else if current_url == "/mediadevices/riedelembrionix"}
+        <Riedelembrionix></Riedelembrionix>
+        
+        {:else if current_url == "/mediadevices"}
+        <Devices></Devices>
+        
+        {:else if current_url == "/setup"}
+        <Setup></Setup>
 
-    <Route path="/details" component={Details}/>
-    <Route path="/topology" component={Topology}/>
+        {:else if current_url == "/init"}
 
-    <Route path="/debug" component={Debug}/>
-    <Route path="/logging" component={Logging}/>
-
-    <Route path="/mediadevices/matroxcip" component={Matroxcip}/>
-    <Route path="/mediadevices/riedelembrionix" component={Riedelembrionix}/>
-
-    <Route path="/mediadevices" component={Devices}/>
-
-
-    <Route path="/setup" component={Setup}/>
-
-    <Route><h2>404 : Not found</h2></Route>
+        
+        
+        {:else}
+            <h2>404 : Not found</h2>
+        {/if}
 
 
 
@@ -211,10 +235,11 @@
               <li class=""></li>
             {/if}
             <li>
-              <Link class={ ( checkCurrentUrl(current_url,route.link) ? "active" : "")} on:click={update_url} to={route.link}>
+
+              <a class={ ( checkCurrentUrl(current_url,route.link) ? "active" : "")} on:click={set_url(route.link)}>
                 <Icon src={route.icon} />
                 <span>{route.label}</span>
-              </Link>
+              </a>
             </li>
           {/if}
         {/each}
@@ -282,8 +307,8 @@
       </ul>
       {/if}
     </nav>
-  </div>
-</Router>
+</div>
+
 
 <ServerConnectorOverlay></ServerConnectorOverlay>
 <OverlayMenu></OverlayMenu>

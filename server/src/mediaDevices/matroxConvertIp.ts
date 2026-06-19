@@ -122,7 +122,7 @@ export default class MediaDevMatroxConvertIp {
     
     private authState ={};
 
-    config = {
+    config:any = {
         "user":"admin",
         "password":"password",
         "closeExistingSessions":true,
@@ -134,7 +134,7 @@ export default class MediaDevMatroxConvertIp {
             "name":"2160p50",
             "file":"./config/edid/2160p50.bin"
         }],
-        resolutions:[],
+        "resolutions":[],
         "manualDevices":[]
     }
 
@@ -180,7 +180,7 @@ export default class MediaDevMatroxConvertIp {
                 fs.mkdirSync("./state/mediadev_matroxcip");
                 console.log("Folder created: ./state/mediadev_matroxcip");
             }
-        }catch(e){
+        }catch(e:any){
             console.error("Error while creating Folder: ./state/mediadev_matroxcip");
         }
 
@@ -256,7 +256,7 @@ export default class MediaDevMatroxConvertIp {
 
         
 
-        this.config.manualDevices.forEach((dev)=>{
+        this.config.manualDevices.forEach((dev:any)=>{
             if(dev.hasOwnProperty('ipList') && dev.hasOwnProperty('sn')){
                 if(!this.state.devices.hasOwnProperty(dev.sn)){
                     let cip:MatroxCipDevice = new MatroxCipDevice();
@@ -271,11 +271,11 @@ export default class MediaDevMatroxConvertIp {
         this.syncList = new SyncObject("mediadevmatroxcip");
         this.syncList.setState(this.state);
         let server = WebsocketSyncServer.getInstance();
-        server.addSyncObject("mediadevmatroxcip","global",this.syncList);
+        server?.addSyncObject("mediadevmatroxcip","global",this.syncList);   // TODO log critical
 
         this.updateQuickState();
 
-        server.addRoute("GET", "matroxcip_forcereload","global", (client: WebsocketClient, query:string[]) => {
+        server?.addRoute("GET", "matroxcip_forcereload","global", (client: WebsocketClient, query:string[]) => {
             return new Promise((resolve, reject) => {
                 let sn = query[0];
                 if(sn){
@@ -288,13 +288,13 @@ export default class MediaDevMatroxConvertIp {
             });
         });
 
-        server.addRoute("GET", "matroxcip_forcereloadall","global", (client: WebsocketClient, query:string[]) => {
+        server?.addRoute("GET", "matroxcip_forcereloadall","global", (client: WebsocketClient, query:string[]) => {
             return new Promise((resolve, reject) => {
                 this.reloadAll(true);
             });
         });
 
-        server.addRoute("POST", "matroxcip_fixptpdomain","global", (client: WebsocketClient, query:string[], postData: any) => {
+        server?.addRoute("POST", "matroxcip_fixptpdomain","global", (client: WebsocketClient, query:string[], postData: any) => {
             return new Promise((resolve, reject) => {
                 this.fixPtpDomain(postData.sn).then(()=>{
                     resolve({});    
@@ -305,7 +305,7 @@ export default class MediaDevMatroxConvertIp {
             });
         });
 
-        server.addRoute("POST", "matroxcip_batchjob","global", (client: WebsocketClient, query:string[], postData: any) => {
+        server?.addRoute("POST", "matroxcip_batchjob","global", (client: WebsocketClient, query:string[], postData: any) => {
             return new Promise((resolve, reject) => {
                 let reboot = false;
                 if(postData.hasOwnProperty('reboot')){
@@ -322,7 +322,7 @@ export default class MediaDevMatroxConvertIp {
             });
         });
 
-        server.addRoute("POST", "matroxcip_changeedid","global", (client: WebsocketClient, query:string[], postData: any) => {
+        server?.addRoute("POST", "matroxcip_changeedid","global", (client: WebsocketClient, query:string[], postData: any) => {
             return new Promise((resolve, reject) => {
                 this.changeEdid(postData.sn,postData.name).then(()=>{
                     resolve({});    
@@ -333,7 +333,7 @@ export default class MediaDevMatroxConvertIp {
             });
         });
         
-        server.addRoute("POST", "matroxcip_enablemaster","global", (client: WebsocketClient, query:string[], postData: any) => {
+        server?.addRoute("POST", "matroxcip_enablemaster","global", (client: WebsocketClient, query:string[], postData: any) => {
             return new Promise((resolve, reject) => {
                 this.masterEnable(postData.sn).then(()=>{
                     resolve({});    
@@ -342,7 +342,7 @@ export default class MediaDevMatroxConvertIp {
                 })
             });
         });
-        server.addRoute("POST", "matroxcip_changeresolution","global", (client: WebsocketClient, query:string[], postData: any) => {
+        server?.addRoute("POST", "matroxcip_changeresolution","global", (client: WebsocketClient, query:string[], postData: any) => {
             return new Promise((resolve, reject) => {
                 this.changeResolution(postData.sn,postData.name).then(()=>{
                     resolve({});
@@ -353,7 +353,7 @@ export default class MediaDevMatroxConvertIp {
             });
         });
 
-        server.addRoute("POST", "matroxcip_deletedevice","global", (client: WebsocketClient, query:string[], postData: any) => {
+        server?.addRoute("POST", "matroxcip_deletedevice","global", (client: WebsocketClient, query:string[], postData: any) => {
             return new Promise((resolve, reject) => {
                 this.deleteDevice(postData.sn).then(()=>{
                     resolve({});    
@@ -438,7 +438,7 @@ export default class MediaDevMatroxConvertIp {
                         });
                     }
                 });
-            }catch(e){
+            }catch(e:any){
                 // TODO SyncLog
                 //console.log(e);
             }
@@ -808,7 +808,7 @@ export default class MediaDevMatroxConvertIp {
     async deleteDevice(sn:string){
         try{
             delete this.state.devices[sn];
-        }catch(e){
+        }catch(e:any){
             throw new Error("Can not delete device.");
         }
 
@@ -1150,7 +1150,7 @@ export default class MediaDevMatroxConvertIp {
 
 
                         
-                    }catch(e){
+                    }catch(e:any){
                         SyncLog.log("error","MatroxCIP", "Can not parse Context for:  "+ ipList.join(", "), e);
                         cip.failed = true,
                         cip.error = "Can not parse Context.";
@@ -1174,7 +1174,7 @@ export default class MediaDevMatroxConvertIp {
                             cip.inputPresent = status.frameBuffer.resolution.isPresent
                             cip.inputBitrate = status.videoStreams[0].bitrateKbits/1000
                         }
-                    }catch(e){
+                    }catch(e:any){
                         SyncLog.log("error","MatroxCIP", "Can not parse Status for:  "+ ipList.join(", "), e);
                         cip.failed = true,
                         cip.error = "Can not parse Status.";
@@ -1222,7 +1222,7 @@ export default class MediaDevMatroxConvertIp {
         cip.failed = false;
         cip.loading = false;
 
-        }catch(e){
+        }catch(e:any){
             cip.loading = false;
             cip.failed = true;
             cip.error = e.message;
@@ -1312,7 +1312,7 @@ export default class MediaDevMatroxConvertIp {
                 }, {httpsAgent:this.httpsAgent});
                 this.authState[sn] = result.data.access_token;
                 
-            }catch(e){ 
+            }catch(e:any){ 
                 if(isAxiosError(e)){
                     if(e.response?.data?.code == 18){
                         // duplicate session
@@ -1320,8 +1320,8 @@ export default class MediaDevMatroxConvertIp {
                         duplicate = true;
                         throw new Error("Other Session active")
                     }else{
-                        SyncLog.log("error","MatroxCIP", "Auth not possible: "+ ipList.join(", "),e.response.data);
-                        throw new Error(e.response.data.message);
+                        SyncLog.log("error","MatroxCIP", "Auth not possible: "+ ipList.join(", "),e.response?.data);
+                        throw new Error(e.response?.data.message);
                     }
                 }else{
                     throw new Error(e.message);
@@ -1332,7 +1332,7 @@ export default class MediaDevMatroxConvertIp {
         if(!this.authState.hasOwnProperty(sn)){
             try{
                 await doLogin(sn);
-            }catch(e){
+            }catch(e:any){
                 throw new Error("Auth not possible: "+e.message);
             }
         }
@@ -1359,12 +1359,12 @@ export default class MediaDevMatroxConvertIp {
                     });
                 }
                 return result.data;
-            }catch(e){ 
+            }catch(e:any){ 
                 if(e.response?.status == 401){
                     // Login expired...
                     try{
                         await doLogin(sn);
-                    }catch(e){
+                    }catch(e:any){
                         throw new Error("Auth not possible: "+e.message);
                     }
                     if(this.authState.hasOwnProperty(sn)){
@@ -1389,7 +1389,7 @@ export default class MediaDevMatroxConvertIp {
                                 });
                             }
                             return result.data;
-                        }catch(e){ 
+                        }catch(e:any){ 
                             throw new Error("Can not get Data: "+e.message);
                         }
                     }else{
@@ -1428,7 +1428,7 @@ export default class MediaDevMatroxConvertIp {
                 let result = await axios.get(url, {httpsAgent:this.httpsAgent});
                 ip = ipt;
                 break;
-            }catch(e){ 
+            }catch(e:any){ 
                 // TODO Logging
                 //console.log(e)
             }
@@ -1457,7 +1457,7 @@ export default class MediaDevMatroxConvertIp {
                 });
                 //console.log(result)
                 
-            }catch(e){ 
+            }catch(e:any){ 
                 // TODO Logging
                 //console.log(e)
             }

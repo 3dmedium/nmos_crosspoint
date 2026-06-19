@@ -13,7 +13,11 @@ const fs = require("fs");
         this.syncDeviceList = new SyncObject("mediadevices", this.deviceList);
 
         let server = WebsocketSyncServer.getInstance();
-        server.addSyncObject("mediadevices","global",this.syncDeviceList);
+        if(!server){
+            SyncLog.critical("mediadevices", "server not ready");
+        }else{
+            server.addSyncObject("mediadevices","global",this.syncDeviceList);
+        }
 
         let modDisabled:any=[];
 
@@ -45,14 +49,14 @@ const fs = require("fs");
                                 let mediaDevClass = require("../../"+f.path + f.name).default;
                                 this.deviceHandlers.push(new mediaDevClass(settings));
                                 SyncLog.log("info", "MediaDevices", "Load MediaDevice from: "+f.name)
-                            }catch(e){
+                            }catch(e:any){
                                 SyncLog.log("error", "MediaDevices", "Can not load from: "+f.name, e)
                             }
                         }
                     }
                 }
             })
-        }catch(e){
+        }catch(e:any){
             SyncLog.log("error", "MediaDevices", "can not read folder: "+path, e)
         }
 

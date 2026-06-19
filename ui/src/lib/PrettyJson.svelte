@@ -1,12 +1,6 @@
 <script lang="ts">
-    import { info } from "autoprefixer";
-    import ServerConnector from "../lib/ServerConnector/ServerConnectorService"
-    import type { Subject } from "rxjs";
-    import { onDestroy, onMount } from "svelte";
 
-    import JsonTree from 'svelte-json-tree';
-    import ScrollArea from "../lib/ScrollArea.svelte";
-    import { ChevronRight, Icon, MagnifyingGlass, RectangleGroup } from "svelte-hero-icons";
+    import { onDestroy, onMount } from "svelte";
     
     export let json:any = null
 

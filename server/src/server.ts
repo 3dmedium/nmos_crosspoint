@@ -76,7 +76,7 @@ try{
     }else{
         throw new Error("Settings server port not a usable number.")
     }
-}catch(e){
+}catch(e:any){
     SyncLog.log("error", "Settings", "Can not read Server Port from settings. Default to "+serverPort+".", e);
 }
 
@@ -86,7 +86,7 @@ try{
     }else{
         throw new Error("Settings server address not a usable.");
     }
-}catch(e){
+}catch(e:any){
     SyncLog.log("error", "Settings", "Can not read Server Address from settings. Default to "+serverAddress+".", e);
 }
 
@@ -100,16 +100,16 @@ try {
     SyncLog.log("error", "Server", "Error while reading file: ./config/users.json", e);
 }
 if(users){
-    server.relaodAuthData(users);
+    server?.relaodAuthData(users);
 }
 
 
 
 
 
-server.addSyncObject("log","global",log);
+server?.addSyncObject("log","global",log);
 
-server.addRoute("POST", "log", "global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "log", "global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         log.getSearch(postData)
             .then((data) => resolve({message:200, data:data}))
@@ -128,13 +128,13 @@ const nmosConnector = new NmosRegistryConnector(settings);
 
 
 
-server.addSyncObject("nmos","global",nmosConnector.syncNmos);
-server.addSyncObject("nmosConnectionState","global",nmosConnector.syncConnectionState);
+server?.addSyncObject("nmos","global",nmosConnector.syncNmos);
+server?.addSyncObject("nmosConnectionState","global",nmosConnector.syncConnectionState);
 
-server.addSyncObject("crosspoint","global",crosspoint.syncCrosspoint);
+server?.addSyncObject("crosspoint","global",crosspoint.syncCrosspoint);
 
 
-let topology = null;
+let topology:Topology|null = null;
 if(modDisabled.includes["topology"]){
     SyncLog.info("server", "disabling module topology");
 }else{
@@ -143,13 +143,13 @@ if(modDisabled.includes["topology"]){
 
 
 const uiConfigSync: SyncObject = new SyncObject("uiconfig", uiConfig);
-server.addSyncObject("uiconfig","public",uiConfigSync);
+server?.addSyncObject("uiconfig","public",uiConfigSync);
 
 
 
 
 
-server.addRoute("GET", "flowInfo","global" , (client: WebsocketClient, query:string[]) => {
+server?.addRoute("GET", "flowInfo","global" , (client: WebsocketClient, query:string[]) => {
     return new Promise((resolve, reject) => {
         let flowId = query[0];
         if(flowId){
@@ -166,7 +166,7 @@ server.addRoute("GET", "flowInfo","global" , (client: WebsocketClient, query:str
     });
 });
 
-server.addRoute("POST", "makeconnection","global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "makeconnection","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .makeConnection(postData)
@@ -175,7 +175,7 @@ server.addRoute("POST", "makeconnection","global", (client: WebsocketClient, que
     });
 });
 
-server.addRoute("POST", "changealias","global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "changealias","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .changeAlias(postData.id, postData.alias)
@@ -184,7 +184,7 @@ server.addRoute("POST", "changealias","global", (client: WebsocketClient, query:
     });
 });
 
-server.addRoute("POST", "enableFlow","global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "enableFlow","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .enableFlow(postData.id, false)
@@ -193,7 +193,7 @@ server.addRoute("POST", "enableFlow","global", (client: WebsocketClient, query:s
     });
 });
 
-server.addRoute("POST", "disableFlow","global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "disableFlow","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .enableFlow(postData.id, true)
@@ -203,7 +203,7 @@ server.addRoute("POST", "disableFlow","global", (client: WebsocketClient, query:
 });
 
 
-server.addRoute("POST", "setMulticast","global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "setMulticast","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .setMulticast(postData.id, postData.data)
@@ -216,7 +216,7 @@ server.addRoute("POST", "setMulticast","global", (client: WebsocketClient, query
 
 
 
-server.addRoute("POST", "togglehidden","global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "togglehidden","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .toggleHidden(postData.id)
@@ -228,7 +228,7 @@ server.addRoute("POST", "togglehidden","global", (client: WebsocketClient, query
 
 
 // Crosspoint editor
-server.addRoute("POST", "crosspoint","global", (client: WebsocketClient, query:string[], postData: any) => {
+server?.addRoute("POST", "crosspoint","global", (client: WebsocketClient, query:string[], postData: any) => {
     return new Promise((resolve, reject) => {
         crosspoint
             .crosspointApi(postData)
