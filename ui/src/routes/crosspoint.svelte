@@ -5,9 +5,10 @@
       import { onDestroy, onMount } from "svelte";
       import { createEventDispatcher } from 'svelte';
 
-      import { Icon, ChevronRight, VideoCamera, Microphone, CodeBracketSquare, MagnifyingGlass,  SpeakerWave, Tv,Pencil, Eye, EyeSlash, Link, InformationCircle } from "svelte-hero-icons";
+      import { Icon, ChevronRight, VideoCamera, Microphone, CodeBracketSquare, MagnifyingGlass,  SpeakerWave, Tv,Pencil, Eye, EyeSlash, Link, InformationCircle, Camera, ArrowUturnLeft } from "svelte-hero-icons";
     import { getSearchTokens, tokenSearch } from "../lib/functions";
     import OverlayMenuService from "../lib/OverlayMenu/OverlayMenuService";
+    import SnapshotService, { type Snapshot } from "../lib/SnapshotService";
     
       interface CrosspointConnect {
         source:string,
@@ -39,6 +40,14 @@
     let searchExpandedSenders:string[] = [];
   
     let sync:Subject<any> ;
+
+    // Snapshot state variables
+    let snapshots: Snapshot[] = [];
+    let snapshotName: string = "";
+    let showSnapshotDialog: boolean = false;
+    let showRecallDialog: boolean = false;
+    let saveSnapshotModal: any;
+    let recallSnapshotModal: any;
 
     let flowTypes = ["video", "audio", "data", "mqtt", "websocket", "audiochannel", "unknown"];
 
@@ -96,6 +105,9 @@
           }
         }
       }catch(e){}
+
+      // Load snapshots
+      loadSnapshots();
 
       sync = ServerConnector.sync("crosspoint");
       sync.subscribe((obj:any)=>{
@@ -769,6 +781,122 @@
       labelModal.close()
     }
 
+      // Snapshot functions
+      function loadSnapshots() {
+        snapshots = SnapshotService.getAllSnapshots();
+      }
+
+      function openSaveSnapshotDialog() {
+        if (preparedConnectList.length === 0) {
+          ServerConnector.addFeedback({
+            message: "No connections to save. Prepare connections first.",
+            level: "warning"
+          });
+          return;
+        }
+        const now = new Date();
+        snapshotName = `Snapshot ${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
+        saveSnapshotModal.showModal();
+      }
+
+      function saveCurrentSnapshot() {
+        if (snapshotName.trim() === "") {
+          ServerConnector.addFeedback({
+            message: "Please enter a snapshot name",
+            level: "warning"
+          });
+          return;
+        }
+        SnapshotService.saveSnapshot(snapshotName, preparedConnectList);
+        loadSnapshots();
+        saveSnapshotModal.close();
+        ServerConnector.addFeedback({
+          message: `Snapshot "${snapshotName}" saved successfully`,
+          level: "success"
+        });
+      }
+
+      function openRecallDialog() {
+        loadSnapshots();
+        recallSnapshotModal.showModal();
+      }
+
+      function recallSnapshot(snapshotId: string) {
+        const snapshot = SnapshotService.getSnapshot(snapshotId);
+        if (!snapshot) {
+          ServerConnector.addFeedback({
+            message: "Snapshot not found",
+            level: "error"
+          });
+          return;
+        }
+
+        // Clear current prepared connections
+        preparedConnectList = [];
+
+        // Recall each connection from the snapshot
+        let recallPromises: Promise<any>[] = [];
+        snapshot.connections.forEach((conn) => {
+          let srcString = getDevcieNameString(conn.srcDev, conn.src);
+          let dstString = getDevcieNameString(conn.dstDev, conn.dst);
+          
+          let promise = ServerConnector.post("makeconnection", {
+            prepare: true,
+            source: srcString,
+            destination: dstString
+          }).then((response) => {
+            let newList: any[] = [];
+            response.data.connections.forEach((c: any) => {
+              newList.push({
+                srcDev: c.srcDev,
+                src: c.src,
+                dstDev: c.dstDev,
+                dst: c.dst
+              });
+            });
+            return newList;
+          }).catch((e) => {
+            ServerConnector.addFeedback({
+              message: "Error recalling connection: " + e.message,
+              level: "error"
+            });
+            return [];
+          });
+          recallPromises.push(promise);
+        });
+
+        Promise.all(recallPromises).then((results) => {
+          results.forEach((newList) => {
+            cleanPreparedConnections(newList);
+          });
+          receivers = [...receivers];
+          updateGlobalTake();
+          recallSnapshotModal.close();
+          ServerConnector.addFeedback({
+            message: `Snapshot "${snapshot.name}" recalled successfully`,
+            level: "success"
+          });
+        });
+      }
+
+      function deleteSnapshot(snapshotId: string) {
+        const snapshot = SnapshotService.getSnapshot(snapshotId);
+        if (!snapshot) return;
+        
+        if (confirm(`Delete snapshot "${snapshot.name}"?`)) {
+          SnapshotService.deleteSnapshot(snapshotId);
+          loadSnapshots();
+          ServerConnector.addFeedback({
+            message: `Snapshot "${snapshot.name}" deleted`,
+            level: "info"
+          });
+        }
+      }
+
+      export function openSnapshotManager() {
+        openRecallDialog();
+      }
+
 
 
     
@@ -809,6 +937,20 @@
           <span class="label-text">Show Audio Channels</span> 
           <input on:input={()=>changeFilter()} bind:checked={filter.showAudioChannels} type="checkbox" class="toggle toggle-info" />
         </label>
+      </li>
+
+      <li>
+        <button on:click={openSaveSnapshotDialog} class="btn btn-sm btn-ghost gap-2">
+          <Icon src={Camera} size="20"></Icon>
+          <span>Save Snapshot</span>
+        </button>
+      </li>
+
+      <li>
+        <button on:click={openRecallDialog} class="btn btn-sm btn-ghost gap-2">
+          <Icon src={ArrowUturnLeft} size="20"></Icon>
+          <span>Recall Snapshot</span>
+        </button>
       </li>
     </ul>
 
@@ -1015,6 +1157,81 @@
             <!-- if there is a button in form, it will close the modal -->
             <button class="btn bg-red-600 text-white" on:click={()=>{takeConnect()}} >Take</button>
             <button on:click={()=>{clearConnect()}} class="btn" >Clear All</button>
+            <button class="btn">Close</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Save Snapshot Dialog -->
+    <dialog bind:this={saveSnapshotModal} class="modal">
+      <div class="modal-box">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        </form>
+        <h3 class="font-bold text-lg">Save Snapshot</h3>
+        <p class="py-2">Connections to save: {preparedConnectList.length}</p>
+        <div class="form-control">
+          <label class="label">
+            <span class="label-text">Snapshot Name</span>
+          </label>
+          <input 
+            bind:value={snapshotName} 
+            type="text" 
+            placeholder="Enter snapshot name" 
+            class="input input-bordered w-full" 
+            on:keypress={(e)=>{if(e.keyCode == 13) saveCurrentSnapshot()}}
+          />
+        </div>
+        <div class="modal-action">
+          <form method="dialog">
+            <button on:click={saveCurrentSnapshot} class="btn btn-primary">Save</button>
+            <button class="btn">Cancel</button>
+          </form>
+        </div>
+      </div>
+    </dialog>
+
+    <!-- Recall Snapshot Dialog -->
+    <dialog bind:this={recallSnapshotModal} class="modal">
+      <div class="modal-box" style="max-width:80%;">
+        <form method="dialog">
+          <button class="btn btn-sm btn-circle btn-ghost absolute right-2 top-2">✕</button>
+        </form>
+        <h3 class="font-bold text-lg">Recall Snapshot</h3>
+        
+        {#if snapshots.length === 0}
+          <p class="py-4">No snapshots saved yet.</p>
+        {:else}
+          <div class="overflow-x-auto">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Date</th>
+                  <th>Connections</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {#each snapshots as snapshot}
+                  <tr>
+                    <td>{snapshot.name}</td>
+                    <td>{new Date(snapshot.timestamp).toLocaleString()}</td>
+                    <td>{snapshot.connections.length}</td>
+                    <td>
+                      <button on:click={() => recallSnapshot(snapshot.id)} class="btn btn-sm btn-primary">Recall</button>
+                      <button on:click={() => deleteSnapshot(snapshot.id)} class="btn btn-sm btn-error">Delete</button>
+                    </td>
+                  </tr>
+                {/each}
+              </tbody>
+            </table>
+          </div>
+        {/if}
+
+        <div class="modal-action">
+          <form method="dialog">
             <button class="btn">Close</button>
           </form>
         </div>
