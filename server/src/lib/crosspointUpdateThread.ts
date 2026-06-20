@@ -698,17 +698,9 @@ class CrosspointUpdateThread{
         }
 
         // ----- Prune ghost devices -----
-        // A device entry in crosspointShadow.devices can outlive its NMOS
-        // source. If it ends up with ZERO senders and ZERO receivers in the
-        // shadow the UI filters it out completely 
-        // no row, no Forget button — but the entry
-        // keeps sitting in /state/crosspoint.json 
-        //
-        // Rule: an empty shadow entry is always garbage. The NMOS registry
-        // is the source of truth — if the device really exists and has
-        // flows, those flows will re-create the entry on the same tick
-        // (see the sender / receiver loops above). So pruning empty
-        // entries here is safe and self-healing.
+        // TODO: this is a temporary fix for devices without sender/receiver.
+        // Make sure they show up in UI and can be removed manually.
+        
         try {
             for(let devId of Object.keys(this.crosspointShadow.devices)){
                 let d:any = this.crosspointShadow.devices[devId];
