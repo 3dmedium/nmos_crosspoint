@@ -211,22 +211,7 @@ class _ServerConnector {
 
       this.disconnect();
 
-      this.wsUrl = '';
-      if (window.location.protocol == 'https') {
-          this.wsUrl += 'wss://';
-      } else {
-          this.wsUrl += 'ws://';
-      }
-      this.wsUrl += window.location.hostname;
-      if (
-          (window.location.port == '443' && window.location.protocol == 'https') ||
-          (window.location.port == '80' && window.location.protocol == 'http')
-      ) {
-          //port is default no changes
-      } else {
-          this.wsUrl += ':' + window.location.port;
-      }
-      this.wsUrl += '/sync/';
+      this.wsUrl = `${window.location.protocol === 'https:' ? 'wss://' : 'ws://'}${window.location.host}/sync/`;
 
       setTimeout(()=>{
         this.connect();
@@ -594,4 +579,3 @@ class _ServerConnector {
 
 const ServerConnector: _ServerConnector = new _ServerConnector();
 export default ServerConnector;
-
