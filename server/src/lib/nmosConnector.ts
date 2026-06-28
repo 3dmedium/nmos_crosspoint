@@ -46,7 +46,7 @@ export class NmosRegistryConnector {
         this.modifierCallbackList[type].push(callback);
     }
 
-    static hookCallbackList:any = {
+    static hookCallbackList:any = {     // TODO typesafety
         "nodes" : [],
         "devices" : [],
         "sources" : [],
@@ -56,7 +56,7 @@ export class NmosRegistryConnector {
         "sendersManifestDetail":[]
     }
 
-    static modifierCallbackList:any = {
+    static modifierCallbackList:any = {    // TODO typesafety
         "nodes" : [],
         "devices" : [],
         "sources" : [],
@@ -69,6 +69,34 @@ export class NmosRegistryConnector {
     settings:any = {};
 
     constructor(config:any, loaddev = false) {
+
+
+
+        // Axios debugging
+
+        //  let activeRequests = 0;
+        //  
+        //  // Add a request interceptor
+        //  axios.interceptors.request.use((config) => {
+        //      activeRequests++;
+        //      //console.log(`Active connections: ${activeRequests}`);
+        //      return config;
+        //  }, (error) => {
+        //      return Promise.reject(error);
+        //  });
+        //  
+        //  // Add a response interceptor
+        //  axios.interceptors.response.use((response) => {
+        //      activeRequests--;
+        //      //console.log(`Active connections: ${activeRequests}`);
+        //      return response;
+        //  }, (error) => {
+        //      activeRequests--;
+        //      //console.log(`Active connections: ${activeRequests}`);
+        //      return Promise.reject(error);
+        //  });
+
+        // ENd Axios Debugging
         this.settings = config;
         NmosRegistryConnector.instance = this;
         this.syncNmos = new SyncObject("nmos", this.nmosState);
@@ -208,6 +236,10 @@ export class NmosRegistryConnector {
     private connectVersionList = ["v1.1", "v1.0"];
     private channelmappingVersionList = ["v1.0"];
     private nmosRegistryList: NmosRegistry[] = [];
+
+    // Track in-flight sender/flow manifest and active fetches to avoid
+    // spawning duplicate requests when the registry re-sends grain updates.
+    private inFlightSenderFetches: Set<string> = new Set();
 
 
     updateCrosspointTimer:any = null;
@@ -404,48 +436,54 @@ export class NmosRegistryConnector {
                 }
             });
         }
-        // TODO
-        //fs.writeFileSync("./state/devnmosstate/devnmosstate.json", JSON.stringify(this.nmosState));
-        this.syncNmos.setState(this.nmosState);
-        if(newItem){
-            if(this.updateNewNmosItemTimer){
-                clearTimeout(this.updateNewNmosItemTimer);
-            }
-            this.updateNewNmosItemTimer = setTimeout(() => {
-                this.updateNewNmosItemTimer = null;
-                this.updateCrosspoint();
-            }, 1000);
-            
-        }else{
-            if(changes){
-                if(this.updateNewNmosItemTimer){
-
-                }else{
+        // Only sync state and spawn side effects when something actually changed.
+        if (newItem || changes) {
+            this.syncNmos.setState(this.nmosState);
+            if (newItem) {
+                if (this.updateNewNmosItemTimer) {
+                    clearTimeout(this.updateNewNmosItemTimer);
+                }
+                this.updateNewNmosItemTimer = setTimeout(() => {
+                    this.updateNewNmosItemTimer = null;
+                    this.updateCrosspoint();
+                }, 1000);
+            } else {
+                if (!this.updateNewNmosItemTimer) {
                     this.updateCrosspoint();
                 }
             }
-        }
 
-        
-                message.grain.data.forEach((g: any) => {
-
+            message.grain.data.forEach((g: any) => {
+                    const senderKey = (type + "_" + (g.path || "")).trim();
+                    // Skip if we already have an in-flight fetch for this sender/flow.
+                    if (this.inFlightSenderFetches.has(senderKey)) {
+                        return;
+                    }
 
                     if (type == "senders" || type == "flows") {
+                        this.inFlightSenderFetches.add(senderKey);
                         setTimeout(()=>{
                             this.getSenderManifestData(type, g);
+                            this.inFlightSenderFetches.delete(senderKey);
                         },200);
+                        const delayedKey = senderKey + "_delayed";
+                        this.inFlightSenderFetches.add(delayedKey);
                         setTimeout(()=>{
                             this.getSenderManifestData(type, g);
+                            this.inFlightSenderFetches.delete(delayedKey);
                         },5000);
                     }
 
                     if(type == "senders"){
+                        const activeKey = senderKey + "_active";
+                        this.inFlightSenderFetches.add(activeKey);
                         setTimeout(()=>{
                             this.getSenderActive(type, g);
+                            this.inFlightSenderFetches.delete(activeKey);
                         },100);
                     }
                 });
-
+        }
 
         
 
@@ -457,8 +495,8 @@ export class NmosRegistryConnector {
             // TODO: other versions
             if(c.type=="urn:x-nmos:control:cm-ctrl/v1.0"){
                 try{
-                    let io = await axios.get(c.href + "/io");
-                    let map = await axios.get(c.href + "/map/active");
+                    let io = await axios.get(c.href + "/io", {timeout: 5000});
+                    let map = await axios.get(c.href + "/map/active", {timeout: 5000});
 
                     for(let k in io.data.outputs){
 
@@ -535,7 +573,7 @@ export class NmosRegistryConnector {
                     // request all SDP files, from inactive senders too
                     // If inactive, ignore errors.
                     if (manifest_href && senderId) {
-                        axios.get(g.post.manifest_href).then(response => {
+                        axios.get(g.post.manifest_href, {timeout: 5000}).then(response => {
                             if(response.data.length > 10){
                                 // TODO Check for BAD SDP Files, is this already enough, more than 10 chars and more than 0 flows
                                 let sdp = sdpTransform.parse(response.data);
@@ -641,7 +679,7 @@ export class NmosRegistryConnector {
 
                     for(let href of active_href){
                         try{
-                            let response = await axios.get(href);
+                            let response = await axios.get(href, {timeout: 5000});
                             this.nmosState.senderActiveData[senderId] = response.data;
                             return;
                         }catch(e:any){
@@ -1354,6 +1392,5 @@ interface CrosspointSender {
     type:string;
     resolution:string;
 }
-
 
 
